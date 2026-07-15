@@ -12,10 +12,13 @@ spherical harmonics through degree 3, backgrounds, and full backward gradients.
 ## Status
 
 - Python API available as `ptxsplat`.
-- Inherited gsplat 1.5.3 kernels are the current reference backend.
-- `PTXSPLAT_BACKEND=auto` and `reference` select the reference backend.
-- `PTXSPLAT_BACKEND=sm120` fails explicitly until an optimized kernel passes
-  parity and benchmark gates.
+- Inherited gsplat 1.5.3 kernels remain the reference backend.
+- `PTXSPLAT_BACKEND=reference` always selects the inherited reference backend.
+- `PTXSPLAT_BACKEND=sm120` selects the specialized RGB, tile-size-16 3DGS
+  raster backward kernel on compute capability 12.0. Its forward path and all
+  other operators remain inherited. Explicit `sm120` selection fails for
+  another device, channel count, or tile size. `auto` selects this path only
+  for supported calls on SM120 and falls back to reference otherwise.
 - The optional `gsplat` import overload is packaged separately to keep upstream
   gsplat co-installable during development.
 

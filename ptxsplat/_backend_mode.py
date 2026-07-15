@@ -35,8 +35,8 @@ def resolve_backend(device: torch.device) -> Backend:
     if requested is Backend.SM120:
         if device.type != "cuda" or torch.cuda.get_device_capability(device) != (12, 0):
             raise RuntimeError("PTXSPLAT_BACKEND=sm120 requires an SM120 CUDA device")
-        raise NotImplementedError(
-            "The SM120 backend is not enabled until a kernel passes parity and benchmark gates"
-        )
+        return requested
 
+    if device.type == "cuda" and torch.cuda.get_device_capability(device) == (12, 0):
+        return Backend.SM120
     return Backend.REFERENCE

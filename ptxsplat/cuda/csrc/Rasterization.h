@@ -67,6 +67,29 @@ void launch_rasterize_to_pixels_3dgs_bwd_kernel(
     at::Tensor v_opacities                  // [..., N] or [nnz]
 );
 
+void launch_rasterize_to_pixels_3dgs_bwd_sm120_kernel(
+    const at::Tensor means2d,
+    const at::Tensor conics,
+    const at::Tensor colors,
+    const at::Tensor opacities,
+    const at::optional<at::Tensor> backgrounds,
+    const at::optional<at::Tensor> masks,
+    uint32_t image_width,
+    uint32_t image_height,
+    uint32_t tile_size,
+    const at::Tensor tile_offsets,
+    const at::Tensor flatten_ids,
+    const at::Tensor render_alphas,
+    const at::Tensor last_ids,
+    const at::Tensor v_render_colors,
+    const at::Tensor v_render_alphas,
+    at::optional<at::Tensor> v_means2d_abs,
+    at::Tensor v_means2d,
+    at::Tensor v_conics,
+    at::Tensor v_colors,
+    at::Tensor v_opacities
+);
+
 /////////////////////////////////////////////////
 // rasterize_to_indices_3dgs
 /////////////////////////////////////////////////

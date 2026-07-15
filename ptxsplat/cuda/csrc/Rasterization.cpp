@@ -1,6 +1,9 @@
 #include <ATen/TensorUtils.h>
 #include <ATen/core/Tensor.h>
+#include <ATen/cuda/CUDAContextLight.h>
 #include <c10/cuda/CUDAGuard.h> // for DEVICE_GUARD
+#include <cstdlib>
+#include <cstring>
 #include <tuple>
 
 #include <ATen/Functions.h>
@@ -12,6 +15,48 @@
 #include "Cameras.h"
 
 namespace ptxsplat {
+
+namespace {
+
+bool use_sm120_raster_backward(
+    const at::Tensor &means2d, uint32_t channels, uint32_t tile_size
+) {
+    const char *value = std::getenv("PTXSPLAT_BACKEND");
+    if (value != nullptr && std::strcmp(value, "reference") == 0) {
+        return false;
+    }
+    const bool automatic = value == nullptr || std::strcmp(value, "auto") == 0;
+    if (!automatic && std::strcmp(value, "sm120") != 0) {
+        AT_ERROR(
+            "Invalid PTXSPLAT_BACKEND=", value,
+            "; expected one of: auto, reference, sm120"
+        );
+    }
+
+    const int device = means2d.get_device();
+    const cudaDeviceProp *properties = at::cuda::getDeviceProperties(device);
+    const bool supported_device =
+        properties->major == 12 && properties->minor == 0;
+    const bool supported_shape = channels == 3 && tile_size == 16;
+    if (automatic) {
+        return supported_device && supported_shape;
+    }
+    if (!supported_device) {
+        AT_ERROR("PTXSPLAT_BACKEND=sm120 requires an SM120 CUDA device");
+    }
+    if (!supported_shape) {
+        AT_ERROR(
+            "PTXSPLAT_BACKEND=sm120 raster backward supports only RGB "
+            "(3 channels) with tile_size=16; got channels=",
+            channels,
+            ", tile_size=",
+            tile_size
+        );
+    }
+    return true;
+}
+
+} // namespace
 
 ////////////////////////////////////////////////////
 // 3DGS
@@ -166,6 +211,34 @@ rasterize_to_pixels_3dgs_bwd(
     at::Tensor v_means2d_abs;
     if (absgrad) {
         v_means2d_abs = at::zeros_like(means2d);
+    }
+
+    if (use_sm120_raster_backward(means2d, channels, tile_size)) {
+        launch_rasterize_to_pixels_3dgs_bwd_sm120_kernel(
+            means2d,
+            conics,
+            colors,
+            opacities,
+            backgrounds,
+            masks,
+            image_width,
+            image_height,
+            tile_size,
+            tile_offsets,
+            flatten_ids,
+            render_alphas,
+            last_ids,
+            v_render_colors,
+            v_render_alphas,
+            absgrad ? c10::optional<at::Tensor>(v_means2d_abs) : c10::nullopt,
+            v_means2d,
+            v_conics,
+            v_colors,
+            v_opacities
+        );
+        return std::make_tuple(
+            v_means2d_abs, v_means2d, v_conics, v_colors, v_opacities
+        );
     }
 
 #define __LAUNCH_KERNEL__(N)                                                   \
