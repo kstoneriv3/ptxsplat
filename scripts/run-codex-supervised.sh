@@ -40,9 +40,23 @@ run_codex() {
 
 usage_limit_reached() {
   grep -Eiq \
-    'rate.?limit|usage.?limit|quota|too many requests|http[^0-9]*429|status[^0-9]*429' \
+    'rate_limit_exceeded|usage limit (has been )?reached|quota exceeded|too many requests|http[^0-9]*429|status[^0-9]*429' \
     "${ATTEMPT_LOG}"
 }
+
+authentication_failed() {
+  grep -Eiq \
+    '401 unauthorized|missing bearer|authentication|not logged in|invalid.*(token|credential)' \
+    "${ATTEMPT_LOG}"
+}
+
+if ! "${SCRIPT_DIR}/docker-run.sh" -- codex login status \
+  >"${ATTEMPT_LOG}" 2>&1; then
+  cat "${ATTEMPT_LOG}" | tee -a "${LOG_FILE}"
+  printf 'Authenticate first with: %s/docker-run.sh -- codex login --device-auth\n' \
+    "${SCRIPT_DIR}" | tee -a "${LOG_FILE}"
+  exit 3
+fi
 
 printf '[%s] starting supervised Codex run with %s/%s\n' \
   "$(date --iso-8601=seconds)" "${MODEL}" "${EFFORT}" | tee -a "${LOG_FILE}"
@@ -55,6 +69,11 @@ run_codex codex exec \
 status=$?
 
 while (( status != 0 )); do
+  if authentication_failed; then
+    printf '[%s] Codex authentication failed; stopping instead of retrying\n' \
+      "$(date --iso-8601=seconds)" | tee -a "${LOG_FILE}"
+    exit "${status}"
+  fi
   if ! usage_limit_reached; then
     printf '[%s] Codex failed for a reason other than a recognized usage limit; stopping\n' \
       "$(date --iso-8601=seconds)" | tee -a "${LOG_FILE}"

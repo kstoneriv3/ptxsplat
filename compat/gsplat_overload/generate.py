@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import shutil
 from pathlib import Path
 
@@ -30,22 +31,50 @@ def __dir__():
 '''
 
 
-def main() -> None:
-    if DESTINATION.exists():
-        shutil.rmtree(DESTINATION)
-
+def generated_modules() -> dict[Path, str]:
+    modules = {}
     for source in sorted(SOURCE.rglob("*.py")):
         relative = source.relative_to(SOURCE)
-        destination = DESTINATION / relative
-        destination.parent.mkdir(parents=True, exist_ok=True)
-
         parts = list(relative.parts)
         if parts[-1] == "__init__.py":
             parts = parts[:-1]
         else:
             parts[-1] = Path(parts[-1]).stem
         module = ".".join(["ptxsplat", *parts])
-        destination.write_text(TEMPLATE.format(module=module), encoding="ascii")
+        modules[relative] = TEMPLATE.format(module=module)
+    return modules
+
+
+def check() -> None:
+    expected = generated_modules()
+    actual = {
+        path.relative_to(DESTINATION): path.read_text(encoding="ascii")
+        for path in DESTINATION.rglob("*.py")
+    }
+    if actual != expected:
+        missing = sorted(set(expected) - set(actual))
+        extra = sorted(set(actual) - set(expected))
+        changed = sorted(path for path in expected.keys() & actual.keys() if expected[path] != actual[path])
+        raise SystemExit(
+            f"generated overload is stale: missing={missing}, extra={extra}, changed={changed}"
+        )
+
+
+def generate() -> None:
+    if DESTINATION.exists():
+        shutil.rmtree(DESTINATION)
+
+    for relative, contents in generated_modules().items():
+        destination = DESTINATION / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(contents, encoding="ascii")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    check() if args.check else generate()
 
 
 if __name__ == "__main__":
