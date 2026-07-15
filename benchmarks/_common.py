@@ -151,6 +151,7 @@ def environment_metadata() -> dict[str, Any]:
         "container_image_ref": os.environ.get(
             "PTXSPLAT_DOCKER_IMAGE", "360-video-gs-dev:latest"
         ),
+        "container_image_id": os.environ.get("PTXSPLAT_DOCKER_IMAGE_ID"),
         "driver_version": _command_output(
             [
                 "nvidia-smi",

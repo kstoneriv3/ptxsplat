@@ -78,8 +78,10 @@ lower bounds, not a peak-FLOP marketing number.
 `benchmarks.roofline` is a lightweight first-pass probe, not a replacement for
 Nsight Compute. It records host enqueue and serialized GPU time for a scalar
 kernel, device-copy bandwidth with read and write bytes counted, and IEEE FP32
-GEMM throughput with TF32 disabled. Increase buffer and GEMM sizes for a stable
-device ceiling:
+GEMM throughput with TF32 disabled. Each DRAM and GEMM timing sample contains a
+batch of operations (ten copies or five GEMMs by default) to sustain work between
+event synchronizations, and all raw per-operation samples are retained. Increase
+buffer and GEMM sizes for a stable device ceiling:
 
 ```bash
 ./scripts/docker-run.sh -- python3 -m benchmarks.roofline \

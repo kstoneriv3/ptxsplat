@@ -19,6 +19,7 @@ fi
 
 mkdir -p "${STATE_ROOT}/home" "${REPO_ROOT}/.bcodex/torch_extensions"
 docker image inspect "${IMAGE}" >/dev/null
+IMAGE_ID="$(docker image inspect --format '{{.Id}}' "${IMAGE}")"
 
 TTY_ARGS=()
 if [[ -t 0 && -t 1 ]]; then
@@ -38,6 +39,8 @@ exec docker run --rm "${TTY_ARGS[@]}" \
   "${CAP_ARGS[@]}" \
   --entrypoint /bin/bash \
   -e HOME=/ptxsplat-state/home \
+  -e PTXSPLAT_DOCKER_IMAGE="${IMAGE}" \
+  -e PTXSPLAT_DOCKER_IMAGE_ID="${IMAGE_ID}" \
   -e TORCH_EXTENSIONS_DIR=/workspace/.bcodex/torch_extensions \
   -e NVIDIA_DRIVER_CAPABILITIES=compute,utility \
   -v "${REPO_ROOT}:/workspace" \
