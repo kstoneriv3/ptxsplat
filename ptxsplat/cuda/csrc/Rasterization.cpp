@@ -18,6 +18,50 @@ namespace ptxsplat {
 
 namespace {
 
+bool use_sm120_raster_forward(
+    const at::Tensor &means2d, uint32_t channels, uint32_t tile_size
+) {
+    const char *backend = std::getenv("PTXSPLAT_BACKEND");
+    if (backend != nullptr && std::strcmp(backend, "reference") == 0) {
+        return false;
+    }
+    const bool automatic =
+        backend == nullptr || std::strcmp(backend, "auto") == 0;
+    if (!automatic && std::strcmp(backend, "sm120") != 0) {
+        AT_ERROR(
+            "Invalid PTXSPLAT_BACKEND=", backend,
+            "; expected one of: auto, reference, sm120"
+        );
+    }
+
+    const char *variant = std::getenv("PTXSPLAT_SM120_FORWARD_VARIANT");
+    if (variant != nullptr && std::strcmp(variant, "reference") == 0) {
+        return false;
+    }
+    if (variant != nullptr && std::strcmp(variant, "soa384") != 0) {
+        AT_ERROR(
+            "Invalid PTXSPLAT_SM120_FORWARD_VARIANT=", variant,
+            "; expected one of: reference, soa384"
+        );
+    }
+
+    const cudaDeviceProp *properties =
+        at::cuda::getDeviceProperties(means2d.get_device());
+    const bool supported_device =
+        properties->major == 12 && properties->minor == 0;
+    const bool supported_shape = channels == 3 && tile_size == 16;
+    if (!supported_device) {
+        if (automatic) {
+            return false;
+        }
+        AT_ERROR("SM120 raster forward requires an SM120 CUDA device");
+    }
+    if (!supported_shape) {
+        return false;
+    }
+    return true;
+}
+
 bool use_sm120_raster_backward(
     const at::Tensor &means2d, uint32_t channels, uint32_t tile_size
 ) {
@@ -107,6 +151,26 @@ std::tuple<at::Tensor, at::Tensor, at::Tensor> rasterize_to_pixels_3dgs_fwd(
     at::DimVector last_ids_dims(image_dims);
     last_ids_dims.append({image_height, image_width});
     at::Tensor last_ids = at::empty(last_ids_dims, opt.dtype(at::kInt));
+
+    if (use_sm120_raster_forward(means2d, channels, tile_size)) {
+        launch_rasterize_to_pixels_3dgs_fwd_sm120_kernel(
+            means2d,
+            conics,
+            colors,
+            opacities,
+            backgrounds,
+            masks,
+            image_width,
+            image_height,
+            tile_size,
+            tile_offsets,
+            flatten_ids,
+            renders,
+            alphas,
+            last_ids
+        );
+        return std::make_tuple(renders, alphas, last_ids);
+    }
 
 #define __LAUNCH_KERNEL__(N)                                                   \
     case N:                                                                    \

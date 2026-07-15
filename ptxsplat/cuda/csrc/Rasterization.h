@@ -37,6 +37,23 @@ void launch_rasterize_to_pixels_3dgs_fwd_kernel(
     at::Tensor last_ids // [..., image_height, image_width]
 );
 
+void launch_rasterize_to_pixels_3dgs_fwd_sm120_kernel(
+    const at::Tensor means2d,
+    const at::Tensor conics,
+    const at::Tensor colors,
+    const at::Tensor opacities,
+    const at::optional<at::Tensor> backgrounds,
+    const at::optional<at::Tensor> masks,
+    uint32_t image_width,
+    uint32_t image_height,
+    uint32_t tile_size,
+    const at::Tensor tile_offsets,
+    const at::Tensor flatten_ids,
+    at::Tensor renders,
+    at::Tensor alphas,
+    at::Tensor last_ids
+);
+
 template <uint32_t CDIM>
 void launch_rasterize_to_pixels_3dgs_bwd_kernel(
     // Gaussian parameters
