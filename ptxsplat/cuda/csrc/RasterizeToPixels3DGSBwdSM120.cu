@@ -261,10 +261,10 @@ __global__ void rasterize_to_pixels_3dgs_bwd_sm120_float4_kernel(
             warpSum<CDIM>(v_rgb_local, warp);
             warpSum(v_conic_local, warp);
             warpSum(v_xy_local, warp);
+            warpSum(v_opacity_local, warp);
             if (v_means2d_abs != nullptr) {
                 warpSum(v_xy_abs_local, warp);
             }
-            warpSum(v_opacity_local, warp);
             if (warp.thread_rank() == 0) {
                 int32_t g = __float_as_int(
                     gaussian_batch[t].rgb_b_id_padding.y

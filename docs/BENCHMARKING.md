@@ -156,7 +156,9 @@ below 85 C; rejected transition or throttled rounds remain in the raw record.
 
 For the promoted backward invocation, the exact minimum is nine scalar warp
 sums and nine lane-zero REDG FP32 atomics for every warp-active Gaussian. Each
-sum has five shuffle/add stages. The initial per-warp maximum compiles to one
+sum has five shuffle/add stages. Keep all nine mandatory sums, including
+opacity, adjacent before optional absgrad work so nvcc can emit each XOR stage
+across the independent values. The initial per-warp maximum compiles to one
 `REDUX` instruction. The analysis requires the dynamic identities
 `SHFL = active_events * 9 * 5`, `REDG = active_events * 9`, and
 `REDUX = launched_warps` to hold. It also maps per-PC counts onto captured SASS
