@@ -40,9 +40,13 @@ def _scene(means, *, scales=None, quats=None, opacities=None, colors=None):
     return {
         "means": means,
         "quats": torch.tensor(quats, dtype=torch.float32, device=DEVICE).reshape(n, 4),
-        "scales": torch.tensor(scales, dtype=torch.float32, device=DEVICE).reshape(n, 3),
+        "scales": torch.tensor(scales, dtype=torch.float32, device=DEVICE).reshape(
+            n, 3
+        ),
         "opacities": torch.tensor(opacities, dtype=torch.float32, device=DEVICE),
-        "colors": torch.tensor(colors, dtype=torch.float32, device=DEVICE).reshape(n, 3),
+        "colors": torch.tensor(colors, dtype=torch.float32, device=DEVICE).reshape(
+            n, 3
+        ),
     }
 
 
@@ -79,6 +83,7 @@ def _moments(alpha):
         indexing="ij",
     )
     total = weights.sum()
+    assert total > 0
     mx = (weights * xs).sum() / total
     my = (weights * ys).sum() / total
     return (weights * (xs - mx).square()).sum() / total, (
@@ -98,9 +103,13 @@ def test_01_empty_and_fully_culled_are_background_only():
 def test_02_centered_isotropic_gaussian_is_symmetric():
     render, alpha, meta = _render(_scene([[0.0, 0.0, 2.0]]))
     _assert_image_contract(render, alpha)
-    torch.testing.assert_close(meta["means2d"][0], torch.tensor([16.0, 16.0], device=DEVICE))
+    torch.testing.assert_close(
+        meta["means2d"][0], torch.tensor([16.0, 16.0], device=DEVICE)
+    )
     center = alpha[0, 15:17, 15:17, 0]
-    torch.testing.assert_close(center, center[0, 0].expand_as(center), atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(
+        center, center[0, 0].expand_as(center), atol=1e-6, rtol=1e-6
+    )
 
 
 def test_03_off_center_projection_matches_pinhole_formula():
@@ -136,7 +145,7 @@ def test_07_image_edge_clipping_is_bounded():
     render, alpha, _ = _render(_scene([[-1.30, 0.0, 2.0]], scales=[[0.4, 0.4, 0.4]]))
     _assert_image_contract(render, alpha)
     assert alpha.sum() > 0
-    assert alpha[:, :, -1].max() == 0
+    assert alpha[:, :, -1].max().item() == 0.0
 
 
 def test_08_tile_boundary_has_no_omission_or_duplicate():
@@ -174,7 +183,9 @@ def test_10_overlapping_splats_follow_exact_front_to_back_compositing():
         + background[0] * transmittance
     )
     torch.testing.assert_close(render[0, 0, 0], expected, atol=1e-6, rtol=1e-6)
-    torch.testing.assert_close(alpha[0, 0, 0, 0], 1.0 - transmittance, atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(
+        alpha[0, 0, 0, 0], 1.0 - transmittance, atol=1e-6, rtol=1e-6
+    )
 
 
 def test_11_distinct_depth_input_permutation_is_invariant():
@@ -189,10 +200,16 @@ def test_11_distinct_depth_input_permutation_is_invariant():
 
 def test_12_zero_and_near_zero_opacity_are_distinguishable():
     background = [0.2, 0.3, 0.4]
-    zero, zero_alpha, _ = _render(_scene([[0.0, 0.0, 2.0]], opacities=[0.0]), background=background)
-    near, near_alpha, _ = _render(_scene([[0.0, 0.0, 2.0]], opacities=[0.01]), background=background)
-    torch.testing.assert_close(zero, torch.tensor(background, device=DEVICE).expand_as(zero))
-    assert zero_alpha.max() == 0
+    zero, zero_alpha, _ = _render(
+        _scene([[0.0, 0.0, 2.0]], opacities=[0.0]), background=background
+    )
+    near, near_alpha, _ = _render(
+        _scene([[0.0, 0.0, 2.0]], opacities=[0.01]), background=background
+    )
+    torch.testing.assert_close(
+        zero, torch.tensor(background, device=DEVICE).expand_as(zero)
+    )
+    assert zero_alpha.max().item() == 0.0
     assert near_alpha.max() > 0
     assert not torch.equal(near, zero)
 
@@ -200,21 +217,30 @@ def test_12_zero_and_near_zero_opacity_are_distinguishable():
 def test_13_opaque_foreground_suppresses_rear_color_gradient():
     scene = _scene(
         [[0.0, 0.0, 1.5], [0.0, 0.0, 2.0]],
-        opacities=[0.999, 0.8],
+        opacities=[1.0, 0.8],
         colors=[[1.0, 0.0, 0.0], [0.0, 0.0, 1.0]],
     )
     scene["colors"].requires_grad_()
-    render, _, _ = _render(scene)
-    render[0, 15:17, 15:17].sum().backward()
+    # A principal point at (15.5, 15.5) puts both means exactly on pixel (15, 15),
+    # making the foreground alpha hit the renderer's 0.999 clamp.
+    render, _, _ = _render(scene, camera=_camera(cx=15.5, cy=15.5))
+    render[0, 15, 15].sum().backward()
     front = scene["colors"].grad[0].norm()
     rear = scene["colors"].grad[1].norm()
     assert rear < 0.01 * front
 
 
 def test_14_near_and_far_plane_clipping_are_one_sided():
-    scene = _scene([[0.0, 0.0, 0.009], [0.0, 0.0, 1.0], [0.0, 0.0, 5.001]])
+    scene = _scene(
+        [
+            [0.0, 0.0, 0.009],
+            [0.0, 0.0, 0.01],
+            [0.0, 0.0, 5.0],
+            [0.0, 0.0, 5.001],
+        ]
+    )
     _, _, meta = _render(scene, near_plane=0.01, far_plane=5.0)
-    assert meta["gaussian_ids"].tolist() == [1]
+    assert meta["gaussian_ids"].tolist() == [1, 2]
 
 
 def test_15_background_uses_final_transmittance():
@@ -228,7 +254,11 @@ def test_15_background_uses_final_transmittance():
 
 
 def test_16_quaternion_normalization_and_degree_zero_sh_invariants():
-    scene = _scene([[0.0, 0.0, 2.0]], scales=[[0.35, 0.08, 0.08]], quats=[[1.0, 0.2, 0.3, 0.4]])
+    scene = _scene(
+        [[0.0, 0.0, 2.0]],
+        scales=[[0.35, 0.08, 0.08]],
+        quats=[[1.0, 0.2, 0.3, 0.4]],
+    )
     scaled = {key: value.clone() for key, value in scene.items()}
     scaled["quats"] *= 7.0
     render, alpha, _ = _render(scene)
@@ -243,9 +273,19 @@ def test_16_quaternion_normalization_and_degree_zero_sh_invariants():
 
 
 def test_exact_compositing_backward_weights():
-    means2d = torch.tensor([[[0.5, 0.5], [0.5, 0.5]]], device=DEVICE, requires_grad=True)
-    conics = torch.tensor([[[1.0, 0.0, 1.0], [1.0, 0.0, 1.0]]], device=DEVICE, requires_grad=True)
-    colors = torch.tensor([[[1.0, 0.2, 0.0], [0.0, 0.1, 1.0]]], device=DEVICE, requires_grad=True)
+    means2d = torch.tensor(
+        [[[0.5, 0.5], [0.5, 0.5]]], device=DEVICE, requires_grad=True
+    )
+    conics = torch.tensor(
+        [[[1.0, 0.0, 1.0], [1.0, 0.0, 1.0]]],
+        device=DEVICE,
+        requires_grad=True,
+    )
+    colors = torch.tensor(
+        [[[1.0, 0.2, 0.0], [0.0, 0.1, 1.0]]],
+        device=DEVICE,
+        requires_grad=True,
+    )
     opacities = torch.tensor([[0.25, 0.5]], device=DEVICE, requires_grad=True)
     background = torch.tensor([[0.2, 0.4, 0.6]], device=DEVICE, requires_grad=True)
     offsets = torch.zeros((1, 1, 1), dtype=torch.int32, device=DEVICE)
@@ -263,12 +303,26 @@ def test_exact_compositing_backward_weights():
     c0, c1 = colors.detach()[0]
     bg = background.detach()[0]
     torch.testing.assert_close(colors.grad[0, 0], upstream * o0, atol=1e-6, rtol=1e-6)
-    torch.testing.assert_close(colors.grad[0, 1], upstream * (1 - o0) * o1, atol=1e-6, rtol=1e-6)
-    torch.testing.assert_close(background.grad[0], upstream * (1 - o0) * (1 - o1), atol=1e-6, rtol=1e-6)
+    torch.testing.assert_close(
+        colors.grad[0, 1], upstream * (1 - o0) * o1, atol=1e-6, rtol=1e-6
+    )
+    torch.testing.assert_close(
+        background.grad[0],
+        upstream * (1 - o0) * (1 - o1),
+        atol=1e-6,
+        rtol=1e-6,
+    )
     expected_o0 = upstream.dot(c0 - c1 * o1 - bg * (1 - o1)) + alpha_upstream * (1 - o1)
     expected_o1 = upstream.dot((1 - o0) * (c1 - bg)) + alpha_upstream * (1 - o0)
-    torch.testing.assert_close(opacities.grad[0], torch.stack([expected_o0, expected_o1]), atol=2e-5, rtol=2e-5)
-    torch.testing.assert_close(means2d.grad, torch.zeros_like(means2d), atol=1e-6, rtol=0)
+    torch.testing.assert_close(
+        opacities.grad[0],
+        torch.stack([expected_o0, expected_o1]),
+        atol=2e-5,
+        rtol=2e-5,
+    )
+    torch.testing.assert_close(
+        means2d.grad, torch.zeros_like(means2d), atol=1e-6, rtol=0
+    )
     torch.testing.assert_close(conics.grad, torch.zeros_like(conics), atol=1e-6, rtol=0)
 
 

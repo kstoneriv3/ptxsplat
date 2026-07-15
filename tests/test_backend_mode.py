@@ -25,3 +25,10 @@ def test_sm120_backend_cannot_silently_fall_back(monkeypatch):
     monkeypatch.setenv("PTXSPLAT_BACKEND", "sm120")
     with pytest.raises(RuntimeError, match="requires an SM120 CUDA device"):
         resolve_backend(torch.device("cpu"))
+
+
+def test_sm120_backend_remains_gated_on_target_device(monkeypatch):
+    monkeypatch.setenv("PTXSPLAT_BACKEND", "sm120")
+    monkeypatch.setattr(torch.cuda, "get_device_capability", lambda device: (12, 0))
+    with pytest.raises(NotImplementedError, match="not enabled until a kernel passes"):
+        resolve_backend(torch.device("cuda"))
