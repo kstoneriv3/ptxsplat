@@ -12,7 +12,7 @@ from typing import Tuple
 import pytest
 import torch
 
-from gsplat._helper import load_test_data
+from ptxsplat._helper import load_test_data
 
 device = torch.device("cuda:0")
 
@@ -66,7 +66,7 @@ def test_rasterization(
     test_data,
     render_mode: str,
 ):
-    from gsplat.rendering import (
+    from ptxsplat.rendering import (
         rasterization,
         FThetaCameraDistortionParameters,
         FThetaPolynomialType,

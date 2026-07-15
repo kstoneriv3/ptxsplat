@@ -5,7 +5,7 @@ from typing import Tuple, Callable
 from nerfview import Viewer, RenderTabState
 
 
-class GsplatRenderTabState(RenderTabState):
+class PtxsplatRenderTabState(RenderTabState):
     # non-controlable parameters
     total_gs_count: int = 0
     rendered_gs_count: int = 0
@@ -27,9 +27,9 @@ class GsplatRenderTabState(RenderTabState):
     ] = "turbo"
 
 
-class GsplatViewer(Viewer):
+class PtxsplatViewer(Viewer):
     """
-    Viewer for gsplat 2dgs.
+    Viewer for ptxsplat 2dgs.
     """
 
     def __init__(
@@ -40,17 +40,17 @@ class GsplatViewer(Viewer):
         mode: Literal["rendering", "training"] = "rendering",
     ):
         super().__init__(server, render_fn, output_dir, mode)
-        server.gui.set_panel_label("gsplat 2dgs viewer")
+        server.gui.set_panel_label("ptxsplat 2dgs viewer")
 
     def _init_rendering_tab(self):
-        self.render_tab_state = GsplatRenderTabState()
+        self.render_tab_state = PtxsplatRenderTabState()
         self._rendering_tab_handles = {}
         self._rendering_folder = self.server.gui.add_folder("Rendering")
 
     def _populate_rendering_tab(self):
         server = self.server
         with self._rendering_folder:
-            with server.gui.add_folder("Gsplat"):
+            with server.gui.add_folder("Ptxsplat"):
                 total_gs_count_number = server.gui.add_number(
                     "Total",
                     initial_value=self.render_tab_state.total_gs_count,

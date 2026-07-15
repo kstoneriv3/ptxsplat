@@ -47,7 +47,7 @@ jobs:
         run: |
           echo "Fetching latest release info (unauthenticated)..."
           release_info=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-            https://api.github.com/repos/nerfstudio-project/gsplat/releases/latest)
+            https://api.github.com/repos/nerfstudio-project/ptxsplat/releases/latest)
 
           # Extract the "upload_url" field and strip the {?name,label} part
           upload_url=$(echo "$release_info" | grep '"upload_url":' | cut -d '"' -f 4 | sed 's/{.*//')
@@ -85,7 +85,7 @@ jobs:
           publish_dir: ./whl
           destination_dir: whl
           keep_files: false
-          cname: docs.gsplat.studio
+          cname: docs.ptxsplat.studio
 
   upload_pypi:
     name: Upload to PyPi

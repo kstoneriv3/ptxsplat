@@ -1,9 +1,9 @@
 Compression
 ===================================
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
-`gsplat` provides handy APIs for compressing and decompressing the Gaussian parameters,
+`ptxsplat` provides handy APIs for compressing and decompressing the Gaussian parameters,
 which can significantly reduce the storage / streaming cost. For example, using :class:`PngCompression`,
 1 million Gaussians that are stored in 236 MB can be compressed to 16.5 MB, with only 0.5dB
 PSNR loss (29.18dB to 28.65dB).
@@ -15,11 +15,11 @@ as either a Dict of
 with at least the following keys: {"means", "scales", "quats", "opacities", "sh0", "shN"}. 
 On top of these attributes, an arbitrary number of extra attributes are supported.
 
-The following code snippet is an example of how to use the compression approach in `gsplat`:
+The following code snippet is an example of how to use the compression approach in `ptxsplat`:
 
 .. code-block:: python
 
-    from gsplat import PngCompression
+    from ptxsplat import PngCompression
 
     splats: Dict[str, Tensor] = {
         "means": Tensor(N, 3), "scales": Tensor(N, 3), "quats": Tensor(N, 4), "opacities": Tensor(N),
@@ -32,7 +32,7 @@ The following code snippet is an example of how to use the compression approach 
     # decompress the compressed files
     splats_c = compression_method.decompress(compress_dir)
 
-Below is the API for the compression approaches we support in `gsplat`:
+Below is the API for the compression approaches we support in `ptxsplat`:
 
 .. autoclass:: PngCompression
     :members:

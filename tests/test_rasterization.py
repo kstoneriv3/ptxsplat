@@ -27,7 +27,7 @@ def test_rasterization(
     packed: bool,
     batch_dims: Tuple[int, ...],
 ):
-    from gsplat.rendering import _rasterization, rasterization
+    from ptxsplat.rendering import _rasterization, rasterization
 
     torch.manual_seed(42)
 

@@ -7,11 +7,11 @@ import torch
 import torch.nn.functional as F
 import viser
 from pathlib import Path
-from gsplat.distributed import cli
-from gsplat.rendering import rasterization_2dgs
+from ptxsplat.distributed import cli
+from ptxsplat.rendering import rasterization_2dgs
 
 from nerfview import CameraState, RenderTabState, apply_float_colormap
-from gsplat_viewer_2dgs import GsplatViewer, GsplatRenderTabState
+from ptxsplat_viewer_2dgs import PtxsplatViewer, PtxsplatRenderTabState
 
 
 def main(local_rank: int, world_rank, world_size: int, args):
@@ -40,7 +40,7 @@ def main(local_rank: int, world_rank, world_size: int, args):
     # register and open viewer
     @torch.no_grad()
     def viewer_render_fn(camera_state: CameraState, render_tab_state: RenderTabState):
-        assert isinstance(render_tab_state, GsplatRenderTabState)
+        assert isinstance(render_tab_state, PtxsplatRenderTabState)
         if render_tab_state.preview_render:
             width = render_tab_state.render_width
             height = render_tab_state.render_height
@@ -119,7 +119,7 @@ def main(local_rank: int, world_rank, world_size: int, args):
         return renders
 
     server = viser.ViserServer(port=args.port, verbose=False)
-    _ = GsplatViewer(
+    _ = PtxsplatViewer(
         server=server,
         render_fn=viewer_render_fn,
         output_dir=Path(args.output_dir),

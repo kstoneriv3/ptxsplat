@@ -1,7 +1,7 @@
 Fit a COLMAP Capture
 ========================================
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
 The :code:`examples/simple_trainer.py default` script allows you train a 
 `3D Gaussian Splatting <https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/>`_ 

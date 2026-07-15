@@ -1,9 +1,9 @@
 __version__ = None
-exec(open("../../gsplat/version.py", "r").read())
+exec(open("../../ptxsplat/version.py", "r").read())
 
 # -- Project information
 
-project = "gsplat"
+project = "ptxsplat"
 copyright = "2023, nerfstudio team"
 author = "nerfstudio"
 

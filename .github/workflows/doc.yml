@@ -32,14 +32,14 @@ jobs:
       # Get version.
       - name: Get version + subdirectory
         run: |
-          VERSION=$(python -c "from gsplat import __version__; print(__version__)")
+          VERSION=$(python -c "from ptxsplat import __version__; print(__version__)")
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "DOCS_SUBDIR=versions/$VERSION" >> $GITHUB_ENV
 
       # Hack to overwrite version.
       - name: Set version to 'main' for pushes (this will appear in the doc banner)
         run: |
-          sed -i 's/__version__ = ".*"/__version__ = "main"/' gsplat/version.py
+          sed -i 's/__version__ = ".*"/__version__ = "main"/' ptxsplat/version.py
         if: github.event_name == 'push'
 
       # Get version.
@@ -61,10 +61,10 @@ jobs:
           publish_dir: _build/
           destination_dir: ${{ env.DOCS_SUBDIR }}
           keep_files: false  # This will only erase the destination subdirectory.
-          cname: docs.gsplat.studio
+          cname: docs.ptxsplat.studio
         if: github.event_name != 'pull_request'
   
-      # We'll maintain an index of all versions under docs.gsplat.studio/versions.
+      # We'll maintain an index of all versions under docs.ptxsplat.studio/versions.
       # This will be useful for dynamically generating lists of possible doc links.
       - name: Update versions index.txt
         run: |

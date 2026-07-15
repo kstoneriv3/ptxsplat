@@ -8,9 +8,9 @@ import sys
 from setuptools import find_packages, setup
 
 __version__ = None
-exec(open("gsplat/version.py", "r").read())
+exec(open("ptxsplat/version.py", "r").read())
 
-URL = "https://github.com/nerfstudio-project/gsplat"
+URL = "https://github.com/kstoneriv3/ptxsplat"
 
 BUILD_NO_CUDA = os.getenv("BUILD_NO_CUDA", "0") == "1"
 WITH_SYMBOLS = os.getenv("WITH_SYMBOLS", "0") == "1"
@@ -34,7 +34,7 @@ def get_extensions():
     from torch.__config__ import parallel_info
     from torch.utils.cpp_extension import CUDAExtension
 
-    extensions_dir = osp.join("gsplat", "cuda")
+    extensions_dir = osp.join("ptxsplat", "cuda")
     sources = glob.glob(osp.join(extensions_dir, "csrc", "*.cu")) + glob.glob(
         osp.join(extensions_dir, "csrc", "*.cpp")
     )
@@ -87,11 +87,11 @@ def get_extensions():
         extra_compile_args["nvcc"] += ["-DWIN32_LEAN_AND_MEAN", "-allow-unsupported-compiler"]
 
     current_dir = pathlib.Path(__file__).parent.resolve()
-    glm_path = osp.join(current_dir, "gsplat", "cuda", "csrc", "third_party", "glm")
-    include_dirs = [glm_path, osp.join(current_dir, "gsplat", "cuda", "include")]
+    glm_path = osp.join(current_dir, "ptxsplat", "cuda", "csrc", "third_party", "glm")
+    include_dirs = [glm_path, osp.join(current_dir, "ptxsplat", "cuda", "include")]
 
     extension = CUDAExtension(
-        "gsplat.csrc",
+        "ptxsplat.csrc",
         sources,
         include_dirs=include_dirs,
         define_macros=define_macros,
@@ -103,13 +103,13 @@ def get_extensions():
 
 
 setup(
-    name="gsplat",
+    name="ptxsplat",
     version=__version__,
-    description=" Python package for differentiable rasterization of gaussians",
+    description="RTX-optimized differentiable Gaussian rasterization",
     keywords="gaussian, splatting, cuda",
     url=URL,
-    download_url=f"{URL}/archive/gsplat-{__version__}.tar.gz",
-    python_requires=">=3.7",
+    download_url=f"{URL}/archive/v{__version__}.tar.gz",
+    python_requires=">=3.10",
     install_requires=[
         "ninja",
         "numpy",
@@ -119,7 +119,9 @@ setup(
         "typing_extensions; python_version<'3.8'",
     ],
     extras_require={
-        # dev dependencies. Install them by `pip install gsplat[dev]`
+        "gsplat_overload": [f"ptxsplat-gsplat-overload=={__version__}"],
+        "ptx": ["pyptx[torch]==0.1.1", "cuda-python>=12.3"],
+        # dev dependencies. Install them by `pip install ptxsplat[dev]`
         "dev": [
             "black[jupyter]==22.3.0",
             "isort==5.10.1",
@@ -130,6 +132,8 @@ setup(
             "pyyaml==6.0",
             "build",
             "twine",
+            "pyptx[torch]==0.1.1",
+            "cuda-python>=12.3",
         ],
     },
     ext_modules=get_extensions() if not BUILD_NO_CUDA else [],

@@ -7,7 +7,7 @@ Below are the basic functions that supports the rasterization.
 3DGS
 -----
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
 .. autofunction:: spherical_harmonics
 
@@ -33,7 +33,7 @@ Below are the basic functions that supports the rasterization.
 
 2DGS
 -----
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
 .. autofunction:: fully_fused_projection_2dgs
 

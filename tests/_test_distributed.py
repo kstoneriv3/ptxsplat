@@ -1,7 +1,7 @@
 import pytest
 import torch
 
-from gsplat.distributed import (
+from ptxsplat.distributed import (
     all_gather_int32,
     all_gather_tensor_list,
     all_to_all_int32,

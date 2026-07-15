@@ -14,8 +14,8 @@ device = torch.device("cuda:0")
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
 def test_strategy():
-    from gsplat.rendering import rasterization
-    from gsplat.strategy import DefaultStrategy, MCMCStrategy
+    from ptxsplat.rendering import rasterization
+    from ptxsplat.strategy import DefaultStrategy, MCMCStrategy
 
     torch.manual_seed(42)
 
@@ -64,8 +64,8 @@ def test_strategy():
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
 def test_strategy_requires_grad():
-    from gsplat.rendering import rasterization
-    from gsplat.strategy import DefaultStrategy, MCMCStrategy
+    from ptxsplat.rendering import rasterization
+    from ptxsplat.strategy import DefaultStrategy, MCMCStrategy
 
     def assert_consistent_sizes(params):
         sizes = [v.shape[0] for v in params.values()]

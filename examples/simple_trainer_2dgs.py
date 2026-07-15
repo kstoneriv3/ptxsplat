@@ -29,9 +29,9 @@ from utils import (
     rgb_to_sh,
     set_random_seed,
 )
-from gsplat_viewer_2dgs import GsplatViewer, GsplatRenderTabState
-from gsplat.rendering import rasterization_2dgs, rasterization_2dgs_inria_wrapper
-from gsplat.strategy import DefaultStrategy
+from ptxsplat_viewer_2dgs import PtxsplatViewer, PtxsplatRenderTabState
+from ptxsplat.rendering import rasterization_2dgs, rasterization_2dgs_inria_wrapper
+from ptxsplat.strategy import DefaultStrategy
 from nerfview import CameraState, RenderTabState, apply_float_colormap
 
 
@@ -379,7 +379,7 @@ class Runner:
         # Viewer
         if not self.cfg.disable_viewer:
             self.server = viser.ViserServer(port=cfg.port, verbose=False)
-            self.viewer = GsplatViewer(
+            self.viewer = PtxsplatViewer(
                 server=self.server,
                 render_fn=self._viewer_render_fn,
                 output_dir=Path(cfg.result_dir),
@@ -937,7 +937,7 @@ class Runner:
     def _viewer_render_fn(
         self, camera_state: CameraState, render_tab_state: RenderTabState
     ):
-        assert isinstance(render_tab_state, GsplatRenderTabState)
+        assert isinstance(render_tab_state, PtxsplatRenderTabState)
         if render_tab_state.preview_render:
             width = render_tab_state.render_width
             height = render_tab_state.render_height

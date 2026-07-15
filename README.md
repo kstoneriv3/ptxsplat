@@ -1,99 +1,95 @@
-# gsplat
+# ptxsplat
 
-[![Core Tests.](https://github.com/nerfstudio-project/gsplat/actions/workflows/core_tests.yml/badge.svg?branch=main)](https://github.com/nerfstudio-project/gsplat/actions/workflows/core_tests.yml)
-[![Docs](https://github.com/nerfstudio-project/gsplat/actions/workflows/doc.yml/badge.svg?branch=main)](https://github.com/nerfstudio-project/gsplat/actions/workflows/doc.yml)
+`ptxsplat` is an experimental, RTX-optimized fork of
+[`gsplat`](https://github.com/nerfstudio-project/gsplat). It starts from gsplat
+1.5.3 and keeps the reference CUDA implementation as a correctness oracle and
+fallback while architecture-specific kernels are developed for NVIDIA SM120.
 
-[http://www.gsplat.studio/](http://www.gsplat.studio/)
+The first performance target is differentiable 3D Gaussian rendering on an RTX
+5090: one pinhole camera, packed projection, classic RGB rasterization,
+spherical harmonics through degree 3, backgrounds, and full backward gradients.
 
-gsplat is an open-source library for CUDA accelerated rasterization of gaussians with python bindings. It is inspired by the SIGGRAPH paper [3D Gaussian Splatting for Real-Time Rendering of Radiance Fields](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/), but we’ve made gsplat even faster, more memory efficient, and with a growing list of new features! 
+## Status
 
-<div align="center">
-  <video src="https://github.com/nerfstudio-project/gsplat/assets/10151885/64c2e9ca-a9a6-4c7e-8d6f-47eeacd15159" width="100%" />
-</div>
+- Python API available as `ptxsplat`.
+- Inherited gsplat 1.5.3 kernels are the current reference backend.
+- `PTXSPLAT_BACKEND=auto` and `reference` select the reference backend.
+- `PTXSPLAT_BACKEND=sm120` fails explicitly until an optimized kernel passes
+  parity and benchmark gates.
+- The optional `gsplat` import overload is packaged separately to keep upstream
+  gsplat co-installable during development.
 
-## News
+No performance claim is made until the benchmark protocol in
+[`docs/BENCHMARKING.md`](docs/BENCHMARKING.md) produces a reproducible result.
 
-[May 2025] Arbitrary batching (over multiple scenes and multiple viewpoints) is supported now!! Checkout [here](docs/batch.md) for more details! Kudos to [Junchen Liu](https://junchenliu77.github.io/).
+## Development Environment
 
-[May 2025] [Jonathan Stephens](https://x.com/jonstephens85) makes a great [tutorial video](https://www.youtube.com/watch?v=ACPTiP98Pf8) for Windows users on how to install gsplat and get start with 3DGUT.
+The project uses the existing `360-video-gs-dev:latest` image, which contains
+CUDA 12.8, PyTorch 2.9.1, Nsight Compute, and the RTX 5090 toolchain.
 
-[April 2025] [NVIDIA 3DGUT](https://research.nvidia.com/labs/toronto-ai/3DGUT/) is now integrated in gsplat! Checkout [here](docs/3dgut.md) for more details. [[NVIDIA Tech Blog]](https://developer.nvidia.com/blog/revolutionizing-neural-reconstruction-and-rendering-in-gsplat-with-3dgut/) [[NVIDIA Sweepstakes]](https://www.nvidia.com/en-us/research/3dgut-sweepstakes/)
+```bash
+./scripts/docker-run.sh -- python3 -m pip install -e .
+./scripts/docker-run.sh -- pytest -q tests
+./scripts/run-codex-in-docker.sh
+```
+
+Nsight Compute needs GPU performance-counter permission on this host. Launch
+the isolated container with the profiling capability only when required:
+
+```bash
+./scripts/run-codex-in-docker.sh --profile
+./scripts/docker-run.sh --profile -- ncu --set full <command>
+```
+
+For unattended work, authenticate once and run the supervised launcher in a
+detached host-side `tmux` session. It pins Sol/xhigh and retries failed CLI
+runs without selecting a lower-effort fallback:
+
+```bash
+./scripts/docker-run.sh -- codex login --device-auth
+tmux new-session -d -s ptxsplat \
+  "cd $(pwd) && exec ./scripts/run-codex-supervised.sh"
+```
+
+The retry interval defaults to 30 minutes and can be changed with
+`PTXSPLAT_CODEX_RETRY_SECONDS`. Logs are written to
+`.bcodex/autonomous-codex.log`. The supervisor does not grant `SYS_ADMIN` by
+default. Set `PTXSPLAT_CODEX_PROFILE=1` only for a run that needs Nsight Compute
+performance counters.
+
+The launcher mounts only this repository and a dedicated Codex/cache state
+directory. It does not mount the host home, SSH configuration, datasets, or the
+Docker socket.
 
 ## Installation
 
-**Dependence**: Please install [Pytorch](https://pytorch.org/get-started/locally/) first.
-
-The easiest way is to install from PyPI. In this way it will build the CUDA code **on the first run** (JIT).
+Install the development package:
 
 ```bash
-pip install gsplat
+python3 -m pip install -e .
 ```
 
-Alternatively you can install gsplat from source. In this way it will build the CUDA code during installation.
+The release extra installs a separately built compatibility distribution that
+provides `gsplat.*` imports:
 
 ```bash
-pip install git+https://github.com/nerfstudio-project/gsplat.git
+python3 -m pip install 'ptxsplat[gsplat_overload]'
 ```
 
-We also provide [pre-compiled wheels](https://docs.gsplat.studio/whl) for both linux and windows on certain python-torch-CUDA combinations (please check first which versions are supported). Note this way you would have to manually install [gsplat's dependencies](https://github.com/nerfstudio-project/gsplat/blob/6022cf45a19ee307803aaf1f19d407befad2a033/setup.py#L115). For example, to install gsplat for pytorch 2.0 and cuda 11.8 you can run
-```
-pip install ninja numpy jaxtyping rich
-pip install gsplat --index-url https://docs.gsplat.studio/whl/pt20cu118
-```
+Python package extras cannot satisfy another project's `Requires-Dist: gsplat`
+metadata. Applications with a hard dependency on the official distribution
+must adjust that dependency or install their application with dependency
+resolution disabled after installing the overload.
 
-To build gsplat from source on Windows, please check [this instruction](docs/INSTALL_WIN.md).
+## Documentation
 
-## Evaluation
+- [`docs/ROADMAP.md`](docs/ROADMAP.md): implementation and optimization phases.
+- [`docs/CORRECTNESS.md`](docs/CORRECTNESS.md): diagnostic scenes and parity
+  policy.
+- [`docs/BENCHMARKING.md`](docs/BENCHMARKING.md): benchmark and roofline method.
 
-This repo comes with a standalone script that reproduces the official Gaussian Splatting with exactly the same performance on PSNR, SSIM, LPIPS, and converged number of Gaussians. Powered by gsplat’s efficient CUDA implementation, the training takes up to **4x less GPU memory** with up to **15% less time** to finish than the official implementation. Full report can be found [here](https://docs.gsplat.studio/main/tests/eval.html).
+## Attribution
 
-```bash
-cd examples
-pip install -r requirements.txt
-# download mipnerf_360 benchmark data
-python datasets/download_dataset.py
-# run batch evaluation
-bash benchmarks/basic.sh
-```
-
-## Examples
-
-We provide a set of examples to get you started! Below you can find the details about
-the examples (requires to install some exta dependencies via `pip install -r examples/requirements.txt`)
-
-- [Train a 3D Gaussian splatting model on a COLMAP capture.](https://docs.gsplat.studio/main/examples/colmap.html)
-- [Fit a 2D image with 3D Gaussians.](https://docs.gsplat.studio/main/examples/image.html)
-- [Render a large scene in real-time.](https://docs.gsplat.studio/main/examples/large_scale.html)
-
-
-## Development and Contribution
-
-This repository was born from the curiosity of people on the Nerfstudio team trying to understand a new rendering technique. We welcome contributions of any kind and are open to feedback, bug-reports, and improvements to help expand the capabilities of this software.
-
-This project is developed by the following wonderful contributors (unordered):
-
-- [Angjoo Kanazawa](https://people.eecs.berkeley.edu/~kanazawa/) (UC Berkeley): Mentor of the project.
-- [Matthew Tancik](https://www.matthewtancik.com/about-me) (Luma AI): Mentor of the project.
-- [Vickie Ye](https://people.eecs.berkeley.edu/~vye/) (UC Berkeley): Project lead. v0.1 lead.
-- [Matias Turkulainen](https://maturk.github.io/) (Aalto University): Core developer.
-- [Ruilong Li](https://www.liruilong.cn/) (UC Berkeley): Core developer. v1.0 lead.
-- [Justin Kerr](https://kerrj.github.io/) (UC Berkeley): Core developer.
-- [Brent Yi](https://github.com/brentyi) (UC Berkeley): Core developer.
-- [Zhuoyang Pan](https://panzhy.com/) (ShanghaiTech University): Core developer.
-- [Jianbo Ye](http://www.jianboye.org/) (Amazon): Core developer.
-
-We also have a white paper with about the project with benchmarking and mathematical supplement with conventions and derivations, available [here](https://arxiv.org/abs/2409.06765). If you find this library useful in your projects or papers, please consider citing:
-
-```
-@article{ye2025gsplat,
-  title={gsplat: An open-source library for Gaussian splatting},
-  author={Ye, Vickie and Li, Ruilong and Kerr, Justin and Turkulainen, Matias and Yi, Brent and Pan, Zhuoyang and Seiskari, Otto and Ye, Jianbo and Hu, Jeffrey and Tancik, Matthew and Angjoo Kanazawa},
-  journal={Journal of Machine Learning Research},
-  volume={26},
-  number={34},
-  pages={1--17},
-  year={2025}
-}
-```
-
-We welcome contributions of any kind and are open to feedback, bug-reports, and improvements to help expand the capabilities of this software. Please check [docs/DEV.md](docs/DEV.md) for more info about development.
+The baseline implementation and much of the initial test suite come from
+gsplat 1.5.3. Upstream copyright and Apache-2.0 license notices are retained.
+See [`CITATION.bib`](CITATION.bib) for the upstream citation.

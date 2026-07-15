@@ -1,7 +1,7 @@
 Data Conventions
 ===================================
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
 Here we explain the various data conventions used in our repo.
 

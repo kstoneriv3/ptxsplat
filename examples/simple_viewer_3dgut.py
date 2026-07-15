@@ -12,9 +12,9 @@ import torch.nn.functional as F
 import tqdm
 import viser
 
-from gsplat._helper import load_test_data
-from gsplat.distributed import cli
-from gsplat.rendering import rasterization
+from ptxsplat._helper import load_test_data
+from ptxsplat.distributed import cli
+from ptxsplat.rendering import rasterization
 
 
 def main(local_rank: int, world_rank, world_size: int, args):
@@ -130,10 +130,10 @@ def main(local_rank: int, world_rank, world_size: int, args):
         K = torch.from_numpy(K).float().to(device)
         viewmat = c2w.inverse()
 
-        if args.backend == "gsplat":
+        if args.backend == "ptxsplat":
             rasterization_fn = rasterization
         elif args.backend == "inria":
-            from gsplat import rasterization_inria_wrapper
+            from ptxsplat import rasterization_inria_wrapper
 
             rasterization_fn = rasterization_inria_wrapper
         else:
@@ -271,7 +271,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port", type=int, default=8080, help="port for the viewer server"
     )
-    parser.add_argument("--backend", type=str, default="gsplat", help="gsplat, inria")
+    parser.add_argument("--backend", type=str, default="ptxsplat", help="ptxsplat, inria")
     args = parser.parse_args()
     assert args.scene_grid % 2 == 1, "scene_grid must be odd"
 

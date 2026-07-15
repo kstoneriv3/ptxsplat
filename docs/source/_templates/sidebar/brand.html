@@ -20,9 +20,9 @@
 
       async function getVersionList() {
         // This index.txt file is written by the docs.yml GitHub action.
-        // https://github.com/nerfstudio-project/gsplat/blob/main/.github/workflows/doc.yml
+        // https://github.com/nerfstudio-project/ptxsplat/blob/main/.github/workflows/doc.yml
         const response = await fetch(
-          "https://docs.gsplat.studio/versions/index.txt",
+          "https://docs.ptxsplat.studio/versions/index.txt",
           { cache: "no-cache" }
         );
         return await response.text();
@@ -38,9 +38,9 @@
         const versions = (await getVersionList()).trim().split("\n").reverse();
         console.log(versions);
         let htmlString = "<ul style='margin: 0.5rem 0 0 0'>";
-        htmlString += `<li><a href="https://docs.gsplat.studio/main">main</a></li>`;
+        htmlString += `<li><a href="https://docs.ptxsplat.studio/main">main</a></li>`;
         for (let version of versions) {
-          htmlString += `<li><a href="https://docs.gsplat.studio/versions/${version}">${version}</a></li>`;
+          htmlString += `<li><a href="https://docs.ptxsplat.studio/versions/${version}">${version}</a></li>`;
         }
 
         htmlString += "</ul>";
@@ -59,7 +59,7 @@
 
 <div style="text-align: left; padding: 1em">
     <script async defer src="https://buttons.github.io/buttons.js"></script>
-    <a class="github-button" href="https://github.com/nerfstudio-project/gsplat"
+    <a class="github-button" href="https://github.com/nerfstudio-project/ptxsplat"
         data-color-scheme="no-preference: light; light: light; dark: light;" data-size="large" data-show-count="true"
         aria-label="Download buttons/github-buttons on GitHub">
         Github

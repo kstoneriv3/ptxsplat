@@ -57,8 +57,8 @@ def test_data():
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl_2dgs import _fully_fused_projection_2dgs
-    from gsplat.cuda._wrapper import fully_fused_projection_2dgs
+    from ptxsplat.cuda._torch_impl_2dgs import _fully_fused_projection_2dgs
+    from ptxsplat.cuda._wrapper import fully_fused_projection_2dgs
 
     torch.manual_seed(42)
 
@@ -130,7 +130,7 @@ def test_projection_2dgs(test_data, batch_dims: Tuple[int, ...]):
 def test_fully_fused_projection_packed_2dgs(
     test_data, sparse_grad: bool, batch_dims: Tuple[int, ...]
 ):
-    from gsplat.cuda._wrapper import fully_fused_projection_2dgs
+    from ptxsplat.cuda._wrapper import fully_fused_projection_2dgs
 
     torch.manual_seed(42)
 
@@ -254,8 +254,8 @@ def test_fully_fused_projection_packed_2dgs(
 def test_rasterize_to_pixels_2dgs(
     test_data, channels: int, batch_dims: Tuple[int, ...]
 ):
-    from gsplat.cuda._torch_impl_2dgs import _rasterize_to_pixels_2dgs
-    from gsplat.cuda._wrapper import (
+    from ptxsplat.cuda._torch_impl_2dgs import _rasterize_to_pixels_2dgs
+    from ptxsplat.cuda._wrapper import (
         fully_fused_projection_2dgs,
         isect_offset_encode,
         isect_tiles,

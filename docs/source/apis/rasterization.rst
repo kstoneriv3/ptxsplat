@@ -4,7 +4,7 @@ Rasterization
 3DGS
 ------
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
 Given a set of 3D gaussians parametrized by means :math:`\mu \in \mathbb{R}^3`, covariances 
 :math:`\Sigma \in \mathbb{R}^{3 \times 3}`, colors :math:`c`, and opacities :math:`o`, we first 

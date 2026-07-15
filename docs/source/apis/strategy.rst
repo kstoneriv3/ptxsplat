@@ -1,17 +1,17 @@
 Densification
 ===================================
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
-In `gsplat`, we abstract out the densification and pruning process of the Gaussian 
+In `ptxsplat`, we abstract out the densification and pruning process of the Gaussian
 training into a strategy. A strategy is a class that defines how the Gaussian parameters
-(along with their optimizers) should be updated (splitting, pruning, etc.) during the training. 
+(along with their optimizers) should be updated (splitting, pruning, etc.) during the training.
 
 An example of the training workflow using :class:`DefaultStrategy` is like:
 
 .. code-block:: python
 
-    from gsplat import DefaultStrategy, rasterization
+    from ptxsplat import DefaultStrategy, rasterization
 
     # Define Gaussian parameters and optimizers
     params: Dict[str, torch.nn.Parameter] | torch.nn.ParameterDict = ...
@@ -67,7 +67,7 @@ that can be used with our strategies:
     })
     optimizers = {k: torch.optim.Adam([p], lr=1e-3) for k, p in params.keys()}
 
-Below are the strategies that are currently implemented in `gsplat`:
+Below are the strategies that are currently implemented in `ptxsplat`:
 
 .. autoclass:: DefaultStrategy
     :members:

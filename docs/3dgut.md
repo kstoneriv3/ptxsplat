@@ -1,6 +1,6 @@
 # Features: 3DGUT
 
-We now have integrated [NVIDIA 3DGUT](https://research.nvidia.com/labs/toronto-ai/3DGUT/) into gsplat, which extend 3D Gaussian Splatting (3DGS) to support nonlinear camera projections such as distortions in pinhole or fisheye cameras, and [rolling shutter](https://en.wikipedia.org/wiki/Rolling_shutter) effects. This allows user to directly train 3DGS on captured images without the need of undistort them beforehand (though camera calibration -- e.g., using COLMAP -- is still required to get distortion parameters).
+We now have integrated [NVIDIA 3DGUT](https://research.nvidia.com/labs/toronto-ai/3DGUT/) into ptxsplat, which extend 3D Gaussian Splatting (3DGS) to support nonlinear camera projections such as distortions in pinhole or fisheye cameras, and [rolling shutter](https://en.wikipedia.org/wiki/Rolling_shutter) effects. This allows user to directly train 3DGS on captured images without the need of undistort them beforehand (though camera calibration -- e.g., using COLMAP -- is still required to get distortion parameters).
 
 https://github.com/user-attachments/assets/291481ec-9546-4d50-a737-19422dbadffd
 
@@ -8,11 +8,11 @@ https://github.com/user-attachments/assets/291481ec-9546-4d50-a737-19422dbadffd
 
 Here are the instructions on how to use this feature.
 
-### For users directly running `examples` in gsplat:
+### For users directly running `examples` in ptxsplat:
 
 #### Training
 
-Simplly passing in `--with_ut --with_eval3d` to the `simple_trainer.py` arg list will enable training with 3DGUT! And note in gsplat we only support MCMC densification strategy for 3DGUT:
+Simplly passing in `--with_ut --with_eval3d` to the `simple_trainer.py` arg list will enable training with 3DGUT! And note in ptxsplat we only support MCMC densification strategy for 3DGUT:
 
 ```
 python examples/simple_trainer.py mcmc --with_ut --with_eval3d ... <OTHER ARGS>
@@ -35,7 +35,7 @@ Or a more comprehensive nerfstudio-style viewer to export videos. (note changing
 CUDA_VISIBLE_DEVICES=0 python simple_viewer.py --with_ut --with_eval3d --ckpt results/benchmark_mcmc_1M_3dgut/garden/ckpt_29999_rank0.pt 
 ```
 
-### For users using gsplat' API:
+### For users using ptxsplat' API:
 To use the 3DGUT technique The relavant arguments in `rasterization()` function are:
 - Setting `with_ut=True` and `with_eval3d=True` to enable 3DGUT (which is consist of two parts: using unscented transform to estimate the camera projection and evaluate Gaussian response in 3D space.)
 - To train/render pinhole camera with distortion, setting the distortion parameters to `radial_coeffs`, `tangential_coeffs`, `thin_prism_coeffs`.

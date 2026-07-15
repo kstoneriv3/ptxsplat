@@ -14,7 +14,7 @@ device = torch.device("cuda:0")
 
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
 def test_png_compression():
-    from gsplat.compression import PngCompression
+    from ptxsplat.compression import PngCompression
 
     torch.manual_seed(42)
 
@@ -31,7 +31,7 @@ def test_png_compression():
             "features": torch.randn(N, 128),
         }
     ).to(device)
-    compress_dir = "/tmp/gsplat/compression"
+    compress_dir = "/tmp/ptxsplat/compression"
 
     compression_method = PngCompression()
     # run compression and save the compressed files to compress_dir

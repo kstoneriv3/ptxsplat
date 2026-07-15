@@ -13,7 +13,7 @@ import pytest
 import torch
 from typing_extensions import Literal, Tuple, assert_never
 
-from gsplat._helper import load_test_data
+from ptxsplat._helper import load_test_data
 
 device = torch.device("cuda:0")
 
@@ -64,8 +64,8 @@ def test_data():
 @pytest.mark.parametrize("triu", [False, True])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_quat_scale_to_covar_preci(test_data, triu: bool, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl import _quat_scale_to_covar_preci
-    from gsplat.cuda._wrapper import quat_scale_to_covar_preci
+    from ptxsplat.cuda._torch_impl import _quat_scale_to_covar_preci
+    from ptxsplat.cuda._wrapper import quat_scale_to_covar_preci
 
     torch.manual_seed(42)
 
@@ -109,13 +109,13 @@ def test_proj(
     camera_model: Literal["pinhole", "ortho", "fisheye"],
     batch_dims: Tuple[int, ...],
 ):
-    from gsplat.cuda._torch_impl import (
+    from ptxsplat.cuda._torch_impl import (
         _fisheye_proj,
         _ortho_proj,
         _persp_proj,
         _world_to_cam,
     )
-    from gsplat.cuda._wrapper import proj, quat_scale_to_covar_preci
+    from ptxsplat.cuda._wrapper import proj, quat_scale_to_covar_preci
 
     torch.manual_seed(42)
 
@@ -171,8 +171,8 @@ def test_projection(
     camera_model: Literal["pinhole", "ortho", "fisheye"],
     batch_dims: Tuple[int, ...],
 ):
-    from gsplat.cuda._torch_impl import _fully_fused_projection
-    from gsplat.cuda._wrapper import fully_fused_projection, quat_scale_to_covar_preci
+    from ptxsplat.cuda._torch_impl import _fully_fused_projection
+    from ptxsplat.cuda._wrapper import fully_fused_projection, quat_scale_to_covar_preci
 
     torch.manual_seed(42)
 
@@ -282,7 +282,7 @@ def test_fully_fused_projection_packed(
     camera_model: Literal["pinhole", "ortho", "fisheye"],
     batch_dims: Tuple[int, ...],
 ):
-    from gsplat.cuda._wrapper import fully_fused_projection, quat_scale_to_covar_preci
+    from ptxsplat.cuda._wrapper import fully_fused_projection, quat_scale_to_covar_preci
 
     torch.manual_seed(42)
 
@@ -447,8 +447,8 @@ def test_fully_fused_projection_packed(
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="No CUDA device")
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_isect(test_data, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl import _isect_offset_encode, _isect_tiles
-    from gsplat.cuda._wrapper import isect_offset_encode, isect_tiles
+    from ptxsplat.cuda._torch_impl import _isect_offset_encode, _isect_tiles
+    from ptxsplat.cuda._wrapper import isect_offset_encode, isect_tiles
 
     torch.manual_seed(42)
 
@@ -491,8 +491,8 @@ def test_isect(test_data, batch_dims: Tuple[int, ...]):
 @pytest.mark.parametrize("channels", [3, 32, 128])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_rasterize_to_pixels(test_data, channels: int, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl import _rasterize_to_pixels
-    from gsplat.cuda._wrapper import (
+    from ptxsplat.cuda._torch_impl import _rasterize_to_pixels
+    from ptxsplat.cuda._wrapper import (
         fully_fused_projection,
         isect_offset_encode,
         isect_tiles,
@@ -606,8 +606,8 @@ def test_rasterize_to_pixels(test_data, channels: int, batch_dims: Tuple[int, ..
 @pytest.mark.parametrize("sh_degree", [0, 1, 2, 3, 4])
 @pytest.mark.parametrize("batch_dims", [(), (2,), (1, 2)])
 def test_sh(test_data, sh_degree: int, batch_dims: Tuple[int, ...]):
-    from gsplat.cuda._torch_impl import _spherical_harmonics
-    from gsplat.cuda._wrapper import spherical_harmonics
+    from ptxsplat.cuda._torch_impl import _spherical_harmonics
+    from ptxsplat.cuda._wrapper import spherical_harmonics
 
     torch.manual_seed(42)
 

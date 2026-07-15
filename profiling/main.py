@@ -11,9 +11,9 @@ import time
 import torch
 from typing_extensions import Callable, Literal
 
-from gsplat._helper import load_test_data
-from gsplat.distributed import cli
-from gsplat.rendering import rasterization
+from ptxsplat._helper import load_test_data
+from ptxsplat.distributed import cli
+from ptxsplat.rendering import rasterization
 
 RESOLUTIONS = {
     "360p": (640, 360),
@@ -44,7 +44,7 @@ def main(
     scene_grid: int = 15,
     packed: bool = True,
     sparse_grad: bool = False,
-    backend: Literal["gsplat", "inria"] = "gsplat",
+    backend: Literal["ptxsplat", "inria"] = "ptxsplat",
     repeats: int = 100,
     memory_history: bool = False,
     world_rank: int = 0,
@@ -92,10 +92,10 @@ def main(
     if memory_history:
         torch.cuda.memory._record_memory_history()
 
-    if backend == "gsplat":
+    if backend == "ptxsplat":
         rasterization_fn = rasterization
     elif backend == "inria":
-        from gsplat import rasterization_inria_wrapper
+        from ptxsplat import rasterization_inria_wrapper
 
         rasterization_fn = rasterization_inria_wrapper
     else:
@@ -162,8 +162,8 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
             print("========================================")
             print(f"Batch Size: {batch_size}, Channels: {channels}")
             print("========================================")
-            if "gsplat" in args.backends:
-                print("gsplat packed[True] sparse_grad[True]")
+            if "ptxsplat" in args.backends:
+                print("ptxsplat packed[True] sparse_grad[True]")
                 for scene_grid in args.scene_grid:
                     stats = main(
                         batch_size=batch_size,
@@ -180,7 +180,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     collection.append(
                         [
-                            "gsplat v1.0.0",
+                            "ptxsplat v1.0.0",
                             True,
                             True,
                             # configs
@@ -196,7 +196,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     torch.cuda.empty_cache()
 
-                print("gsplat packed[True] sparse_grad[False]")
+                print("ptxsplat packed[True] sparse_grad[False]")
                 for scene_grid in args.scene_grid:
                     stats = main(
                         batch_size=batch_size,
@@ -211,7 +211,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     collection.append(
                         [
-                            "gsplat v1.0.0",
+                            "ptxsplat v1.0.0",
                             True,
                             False,
                             # configs
@@ -227,7 +227,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     torch.cuda.empty_cache()
 
-                print("gsplat packed[False] sparse_grad[False]")
+                print("ptxsplat packed[False] sparse_grad[False]")
                 for scene_grid in args.scene_grid:
                     stats = main(
                         batch_size=batch_size,
@@ -242,7 +242,7 @@ def worker(local_rank: int, world_rank: int, world_size: int, args):
                     )
                     collection.append(
                         [
-                            "gsplat v1.0.0",
+                            "ptxsplat v1.0.0",
                             False,
                             False,
                             # configs
@@ -328,8 +328,8 @@ if __name__ == "__main__":
         "--backends",
         nargs="+",
         type=str,
-        default=["gsplat"],
-        help="gsplat, inria",
+        default=["ptxsplat"],
+        help="ptxsplat, inria",
     )
     parser.add_argument(
         "--repeats",

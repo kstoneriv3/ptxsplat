@@ -1,11 +1,11 @@
-Migrate from gsplat v0.1.11
+Migrate from ptxsplat v0.1.11
 ===================================
 
-.. currentmodule:: gsplat
+.. currentmodule:: ptxsplat
 
 `v1.0.0` is a major release that includes a huge API change. So this document will help 
 you to migrate to `v0.1.11` from `v1.0.0` and enjoys the latest and greatest. The APIs 
-of `v0.1.11` are available at `here <https://docs.gsplat.studio/versions/0.1.11/>`_. Note
+of `v0.1.11` are available at `here <https://docs.ptxsplat.studio/versions/0.1.11/>`_. Note
 you can still call the old APIs in `v1.0.0` but they are deprecated and will be removed in
 the future.
 
@@ -18,7 +18,7 @@ In `v0.1.11`, a basic rasterization workflow is:
 
 .. code-block:: python
     
-    from gsplat import project_gaussians, rasterize_gaussians
+    from ptxsplat import project_gaussians, rasterize_gaussians
 
     means2d, depths, radii, conics, _, num_tiles_hit, _ = project_gaussians(
         means3d=means, # [N, 3]
@@ -55,7 +55,7 @@ In `v1.0.0`, the equivalent code is:
 
 .. code-block:: python
 
-    from gsplat import rasterization
+    from ptxsplat import rasterization
 
     K = torch.tensor([[fx, 0, cx], [0, fy, cy], [0., 0., 1.]], device=device)
     renders, alphas, meta = rasterization(
@@ -83,7 +83,7 @@ before passing it into `rasterize_gaussians`:
 
 .. code-block:: python
 
-    from gsplat import spherical_harmonics
+    from ptxsplat import spherical_harmonics
 
     sh_degree: int = ... # the amount of bands activated
     sh_coeffs: Tensor = ... # [N, K, 3]
@@ -96,7 +96,7 @@ The equivalent code is:
 
 .. code-block:: python
 
-    from gsplat import rasterization
+    from ptxsplat import rasterization
 
     sh_degree: int = ... # the amount of bands activated
     sh_coeffs: Tensor = ... # [N, K, 3]
@@ -117,7 +117,7 @@ from `project_gaussians` to `rasterize_gaussians`:
 
 .. code-block:: python
     
-    from gsplat import project_gaussians, rasterize_gaussians
+    from ptxsplat import project_gaussians, rasterize_gaussians
 
     ..., depths, ... = project_gaussians(...)
 
@@ -133,7 +133,7 @@ In `v1.0.0`, the depth rendering is simplified to a single argument. The equival
 
 .. code-block:: python
 
-    from gsplat import rasterization
+    from ptxsplat import rasterization
 
     expected_depth, alphas, meta = rasterization(
         ...

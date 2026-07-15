@@ -30,13 +30,13 @@ from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 from typing_extensions import Literal, assert_never
 from utils import AppearanceOptModule, CameraOptModule, knn, rgb_to_sh, set_random_seed
 
-from gsplat import export_splats
-from gsplat.compression import PngCompression
-from gsplat.distributed import cli
-from gsplat.optimizers import SelectiveAdam
-from gsplat.rendering import rasterization
-from gsplat.strategy import DefaultStrategy, MCMCStrategy
-from gsplat_viewer import GsplatViewer, GsplatRenderTabState
+from ptxsplat import export_splats
+from ptxsplat.compression import PngCompression
+from ptxsplat.distributed import cli
+from ptxsplat.optimizers import SelectiveAdam
+from ptxsplat.rendering import rasterization
+from ptxsplat.strategy import DefaultStrategy, MCMCStrategy
+from ptxsplat_viewer import PtxsplatViewer, PtxsplatRenderTabState
 from nerfview import CameraState, RenderTabState, apply_float_colormap
 
 
@@ -472,7 +472,7 @@ class Runner:
         # Viewer
         if not self.cfg.disable_viewer:
             self.server = viser.ViserServer(port=cfg.port, verbose=False)
-            self.viewer = GsplatViewer(
+            self.viewer = PtxsplatViewer(
                 server=self.server,
                 render_fn=self._viewer_render_fn,
                 output_dir=Path(cfg.result_dir),
@@ -1088,7 +1088,7 @@ class Runner:
     def _viewer_render_fn(
         self, camera_state: CameraState, render_tab_state: RenderTabState
     ):
-        assert isinstance(render_tab_state, GsplatRenderTabState)
+        assert isinstance(render_tab_state, PtxsplatRenderTabState)
         if render_tab_state.preview_render:
             width = render_tab_state.render_width
             height = render_tab_state.render_height
