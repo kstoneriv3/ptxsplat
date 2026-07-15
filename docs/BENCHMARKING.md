@@ -105,3 +105,77 @@ clock/temperature/power sample. Garden records total/visible Gaussian and
 intersection counts from an untimed finite-output preflight. Add
 optimization-specific hypotheses, compiler data, correctness results, and
 disposition when promoting these raw measurements into experiment records.
+
+## Promoted raster kernel ceiling
+
+`benchmarks.kernel_ceiling` constructs an operation-aware ceiling for the
+promoted SM120 RGB raster forward and backward kernels. The publication run
+requires Nsight Compute privileges and must use the profile container:
+
+```bash
+./scripts/docker-run.sh --profile -- \
+  python3 -m benchmarks.kernel_ceiling run \
+  --output-dir benchmark-results/kernel-ceiling \
+  --thermal-warmup-seconds 8 \
+  --rounds 5 --samples-per-round 20 \
+  --repetitions-per-sample 5 --raster-samples 100 \
+  --ncu-raster-launches 5
+```
+
+The workload is the primary grid-7 garden case at 1920x1080, packed RGB,
+black background, tile size 16, and `absgrad=False`. The command times focused
+native CUDA probes, captures target-function SASS, and profiles dynamic opcode
+and traffic counts for the exact promoted kernels. Probe kernels use 256-thread
+CTAs and dynamic shared memory to reproduce the relevant five- or seven-CTA
+residency. The REDG probe uses four- and eight-warp intra-CTA contention plus an
+eight-CTA stress case. Balanced and skewed barriers, vector shared loads and
+stores, independent and dependent MUFU instructions, and launch/grid tail are
+measured separately. Raw event samples and round-bracketing clock,
+temperature, and power telemetry are retained. Probe rates use only rounds
+starting at least 90% of the maximum observed round-start SM clock and at or
+below 85 C; rejected transition or throttled rounds remain in the raw record.
+
+For the promoted backward invocation, the exact minimum is nine scalar warp
+sums and nine lane-zero REDG FP32 atomics for every warp-active Gaussian. Each
+sum has five shuffle/add stages. The initial per-warp maximum compiles to one
+`REDUX` instruction. The analysis requires the dynamic identities
+`SHFL = active_events * 9 * 5`, `REDG = active_events * 9`, and
+`REDUX = launched_warps` to hold. It also maps per-PC counts onto captured SASS
+to distinguish `MUFU.EX2` from `MUFU.RCP`, barrier variants, and vector shared
+instructions. The reduction and REDG probes execute the same nine-value
+`absgrad=False` path, and a separate dependent `REDUX` probe covers the initial
+warp maximum. Probe output checksums and probe NCU counts guard against compiler
+elimination.
+
+Within one kernel, the latency lower bound is the maximum of FP32, DRAM, L2,
+shared-memory, MUFU, CTA barrier, reduction issue/dependency, REDG atomic, and
+launch/grid-tail terms. Do not sum terms that can overlap. EX2 and RCP demands
+are summed only within their shared MUFU path, and LDS and STS demands are
+summed only within their shared-memory path. Forward and backward lower bounds
+are added because those kernels execute sequentially. A candidate resource
+ceiling may not be lower than throughput already sustained by the exact
+kernel.
+
+Primary current efficiency and residual use 100 non-profiled CUDA-event wrapper
+samples. Forward contains one promoted kernel launch. Backward also performs
+four required output zero-initializations, so its wrapper latency is a
+conservative upper bound on kernel latency and produces a lower-bound
+efficiency. NCU replay duration is retained only for dynamic-count validation,
+deriving its L2 peak, and a profile-comparable bridge to the historical 18.48%
+metric; it is not substituted for event latency.
+
+The terminal `benchmark-results/kernel-ceiling/analysis.json` distinguishes:
+
+- the historical optimistic FP32/DRAM/L2-only roofline;
+- the operation-aware, same-algorithm direct-PTX estimate;
+- headroom that requires an algorithm change and is not credited to direct PTX.
+
+Sensitivity uses the maximum observed four-warp REDG throughput and minimum
+launch latency for the optimistic case, medians with representative eight-warp
+contention for the central case, and slow samples plus skew and cross-CTA
+contention for the conservative case. The 25%-of-ceiling criterion
+passes only when the lowest estimated bound divided by the highest measured
+kernel latency is at least 25%. The less-than-10% residual criterion passes
+only when `current / direct_PTX_estimate - 1` is below 10% at the worst end of
+the range. A failed boolean is a result, not permission to alter the model or
+inputs.
