@@ -484,19 +484,20 @@ void launch_projection_2dgs_packed_bwd_kernel(
     at::Tensor v_scales,                // [..., N, 3] or [nnz, 3]
     at::optional<at::Tensor> v_viewmats // [..., C, 4, 4] Optional
 ) {
-    uint32_t N = means.size(-2);          // number of gaussians
-    uint32_t B = means.numel() / (N * 3); // number of batches
-    uint32_t C = viewmats.size(-3);       // number of cameras
     uint32_t nnz = camera_ids.size(0);
-
-    dim3 threads(256);
-    dim3 grid((nnz + threads.x - 1) / threads.x);
-    int64_t shmem_size = 0; // No shared memory used in this kernel
 
     if (nnz == 0) {
         // skip the kernel launch if there are no elements
         return;
     }
+
+    uint32_t N = means.size(-2);          // number of gaussians
+    uint32_t B = means.numel() / (N * 3); // number of batches
+    uint32_t C = viewmats.size(-3);       // number of cameras
+
+    dim3 threads(256);
+    dim3 grid((nnz + threads.x - 1) / threads.x);
+    int64_t shmem_size = 0; // No shared memory used in this kernel
 
     projection_2dgs_packed_bwd_kernel<float>
         <<<grid, threads, shmem_size, at::cuda::getCurrentCUDAStream()>>>(

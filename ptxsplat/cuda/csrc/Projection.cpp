@@ -13,6 +13,18 @@
 
 namespace ptxsplat {
 
+namespace {
+
+uint32_t batch_size(const at::Tensor &tensor, const int64_t trailing_dims) {
+    uint32_t size = 1;
+    for (int64_t dim = 0; dim < tensor.dim() - trailing_dims; ++dim) {
+        size *= tensor.size(dim);
+    }
+    return size;
+}
+
+} // namespace
+
 std::tuple<at::Tensor, at::Tensor> projection_ewa_simple_fwd(
     const at::Tensor means,  // [..., C, N, 3]
     const at::Tensor covars, // [..., C, N, 3, 3]
@@ -319,9 +331,9 @@ projection_ewa_3dgs_packed_fwd(
     CHECK_INPUT(viewmats);
     CHECK_INPUT(Ks);
 
-    uint32_t N = means.size(-2);          // number of gaussians
-    uint32_t C = viewmats.size(-3);       // number of cameras
-    uint32_t B = means.numel() / (N * 3); // number of batches
+    uint32_t N = means.size(-2);        // number of gaussians
+    uint32_t C = viewmats.size(-3);     // number of cameras
+    uint32_t B = batch_size(means, 2);  // number of batches
     auto opt = means.options();
 
     uint32_t nrows = B * C;
@@ -715,9 +727,9 @@ projection_2dgs_packed_fwd(
     CHECK_INPUT(viewmats);
     CHECK_INPUT(Ks);
 
-    uint32_t N = means.size(-2);          // number of gaussians
-    uint32_t B = means.numel() / (N * 3); // number of batches
-    uint32_t C = viewmats.size(-3);       // number of cameras
+    uint32_t N = means.size(-2);        // number of gaussians
+    uint32_t B = batch_size(means, 2);  // number of batches
+    uint32_t C = viewmats.size(-3);     // number of cameras
     auto opt = means.options();
 
     uint32_t nrows = B * C;
@@ -854,9 +866,6 @@ projection_2dgs_packed_bwd(
     CHECK_INPUT(v_ray_transforms);
 
     auto opt = means.options();
-    uint32_t N = means.size(-2);          // number of gaussians
-    uint32_t B = means.numel() / (N * 3); // number of batches
-    uint32_t C = viewmats.size(-3);       // number of cameras
     uint32_t nnz = batch_ids.size(0);
 
     at::Tensor v_means, v_quats, v_scales, v_viewmats;
