@@ -67,6 +67,25 @@ raster forward, and raster backward independently using captured realistic
 intermediates. Include eager launch overhead in end-to-end results and report a
 CUDA-graph replay measurement separately when useful.
 
+## Component-kernel promotion
+
+Set an operation-specific isolated-gain threshold before timing. The primary
+performance gate is that the paired isolated median and its bootstrap 95% lower
+confidence bound both clear that threshold. Do not require every component
+kernel to produce a fixed 2% whole-pipeline gain.
+
+Also require all of the following:
+
+- the paired whole-pipeline gain has a bootstrap 95% lower bound above zero;
+- with baseline stage share `f = stage_ms / pipeline_ms`, the pipeline median
+  gain is no greater than the isolated gain and is between `0.5 * f * gain` and
+  `2.0 * f * gain`; record the inputs, prediction, and ratio;
+- exact/tolerance-preserving correctness passes, and no required publication
+  case regresses by more than 2% at the median;
+- the promoted invocation has no stack, local memory, or spills, and does not
+  lose theoretical residency or achieved occupancy;
+- no adversarial traffic case grows total L2 sectors by more than 5%.
+
 ## Resource ceilings
 
 Measure launch latency, DRAM and L2 bandwidth, coalesced and gather loads, FP32
