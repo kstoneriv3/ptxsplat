@@ -166,14 +166,27 @@ instructions. The reduction and REDG probes execute the same nine-value
 warp maximum. Probe output checksums and probe NCU counts guard against compiler
 elimination.
 
-Within one kernel, the latency lower bound is the maximum of FP32, DRAM, L2,
-shared-memory, MUFU, CTA barrier, reduction issue/dependency, REDG atomic, and
-launch/grid-tail terms. Do not sum terms that can overlap. EX2 and RCP demands
-are summed only within their shared MUFU path, and LDS and STS demands are
-summed only within their shared-memory path. Forward and backward lower bounds
-are added because those kernels execute sequentially. A candidate resource
-ceiling may not be lower than throughput already sustained by the exact
-kernel.
+NCU CSV time and byte metrics are normalized before analysis while retaining
+their original value and unit. Time units `ns`, `us`, `ms`, and `s` normalize to
+milliseconds. NCU decimal `byte`/`Kbyte`/`Mbyte`/`Gbyte` units normalize to
+bytes; binary `KiB`/`MiB`/`GiB` spellings use powers of 1024. Per-block byte
+units retain the `/block` qualifier. An unknown unit aborts analysis rather than
+falling through to an unscaled number.
+
+Within one kernel, the operation-aware empirical resource target is the maximum
+of FP32, DRAM, L2, shared-memory, MUFU, CTA barrier, reduction
+issue/dependency, REDG atomic, and launch/grid-tail terms. Do not sum terms that
+can overlap. EX2 and RCP demands are summed only within their shared MUFU path,
+and LDS and STS demands are summed only within their shared-memory path. Forward
+and backward targets are added because those kernels execute sequentially. A
+candidate resource rate may not be lower than throughput already sustained by
+the exact kernel.
+
+These operation-aware terms divide exact work counts by independently measured
+probe rates. The resulting maximum is an empirical sustained resource target,
+not a physical latency lower bound and not evidence that a direct-PTX kernel can
+attain all rates simultaneously. The historical FP32/DRAM/L2-only roofline is
+reported separately as a physical lower-bound model.
 
 Primary current efficiency and residual use 100 non-profiled CUDA-event wrapper
 samples. Forward contains one promoted kernel launch. Backward also performs
@@ -186,15 +199,18 @@ metric; it is not substituted for event latency.
 The terminal `benchmark-results/kernel-ceiling/analysis.json` distinguishes:
 
 - the historical optimistic FP32/DRAM/L2-only roofline;
-- the operation-aware, same-algorithm direct-PTX estimate;
-- headroom that requires an algorithm change and is not credited to direct PTX.
+- the operation-aware empirical sustained resource target;
+- profile-comparable NCU replay latency, which is not the primary latency;
+- algorithm-changing headroom, without asserting an achievable direct-PTX
+  bound.
 
 Sensitivity uses the maximum observed four-warp REDG throughput and minimum
 launch latency for the optimistic case, medians with representative eight-warp
 contention for the central case, and slow samples plus skew and cross-CTA
 contention for the conservative case. The 25%-of-ceiling criterion
-passes only when the lowest estimated bound divided by the highest measured
+passes only when the lowest empirical target divided by the highest measured
 kernel latency is at least 25%. The less-than-10% residual criterion passes
-only when `current / direct_PTX_estimate - 1` is below 10% at the worst end of
-the range. A failed boolean is a result, not permission to alter the model or
-inputs.
+only when `current / empirical_resource_target - 1` is below 10% at the worst
+end of the range. Passing either comparison would still characterize the model;
+it would not prove that a direct-PTX implementation can attain the target. A
+failed boolean is a result, not permission to alter the model or inputs.

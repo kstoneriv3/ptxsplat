@@ -8,6 +8,7 @@ from benchmarks.kernel_ceiling import (
     criteria_from_ranges,
     dynamic_subopcode_counts,
     independent_resource_bound_ms,
+    normalize_ncu_metric,
     parse_ncu_csv,
     parse_number,
     parse_opcode_mix,
@@ -39,6 +40,88 @@ def test_parse_ncu_wide_csv_with_units() -> None:
         }
     ]
     assert units["gpu__time_duration.sum"] == "nsecond"
+
+
+def test_normalize_archived_ncu_csv_regression_values() -> None:
+    text = """\
+\"ID\",\"Kernel Name\",\"gpu__time_duration.sum\",\"lts__t_bytes.sum\"
+\"\",\"\",\"ms\",\"Mbyte\"
+\"0\",\"kernel(float *)\",\"1.626176\",\"481.489824\"
+"""
+    rows, units = parse_ncu_csv(text)
+    duration = normalize_ncu_metric(
+        rows[0]["gpu__time_duration.sum"],
+        units["gpu__time_duration.sum"],
+        "time",
+    )
+    traffic = normalize_ncu_metric(
+        rows[0]["lts__t_bytes.sum"], units["lts__t_bytes.sum"], "bytes"
+    )
+
+    assert duration.original_value == "1.626176"
+    assert duration.original_unit == "ms"
+    assert duration.normalized_value == 1.626176
+    assert duration.normalized_unit == "ms"
+    assert traffic.original_value == "481.489824"
+    assert traffic.original_unit == "Mbyte"
+    assert traffic.normalized_value == pytest.approx(481_489_824.0)
+    assert traffic.normalized_unit == "byte"
+
+
+@pytest.mark.parametrize(
+    ("unit", "expected_ms"),
+    [
+        ("ns", 1e-6),
+        ("nsecond", 1e-6),
+        ("us", 1e-3),
+        ("usecond", 1e-3),
+        ("ms", 1.0),
+        ("msecond", 1.0),
+        ("s", 1e3),
+        ("second", 1e3),
+    ],
+)
+def test_normalize_ncu_time_units(unit: str, expected_ms: float) -> None:
+    metric = normalize_ncu_metric("1", unit, "time")
+    assert metric.normalized_value == expected_ms
+    assert metric.normalized_unit == "ms"
+
+
+@pytest.mark.parametrize(
+    ("unit", "expected_bytes"),
+    [
+        ("byte", 1.0),
+        ("Kbyte", 1_000.0),
+        ("Mbyte", 1_000_000.0),
+        ("Gbyte", 1_000_000_000.0),
+        ("KiB", 1_024.0),
+        ("MiB", 1_048_576.0),
+        ("GiB", 1_073_741_824.0),
+    ],
+)
+def test_normalize_ncu_decimal_and_binary_byte_units(
+    unit: str, expected_bytes: float
+) -> None:
+    metric = normalize_ncu_metric("1", unit, "bytes")
+    assert metric.normalized_value == expected_bytes
+    assert metric.normalized_unit == "byte"
+
+
+def test_normalize_ncu_byte_per_block_unit() -> None:
+    metric = normalize_ncu_metric("12.288", "Kbyte/block", "bytes")
+    assert metric.normalized_value == 12_288.0
+    assert metric.normalized_unit == "byte/block"
+
+
+@pytest.mark.parametrize(
+    ("unit", "dimension"),
+    [("cycles", "time"), ("Kibit", "bytes"), ("Mbyte/s", "bytes")],
+)
+def test_normalize_ncu_rejects_unknown_units_loudly(
+    unit: str, dimension: str
+) -> None:
+    with pytest.raises(ValueError, match="unsupported NCU"):
+        normalize_ncu_metric("1", unit, dimension)  # type: ignore[arg-type]
 
 
 def test_parse_ncu_tall_csv_without_units() -> None:
@@ -123,22 +206,26 @@ def test_independent_resources_use_max_not_sum() -> None:
 
 def test_sensitivity_criteria_require_worst_case() -> None:
     result = criteria_from_ranges(
-        lower_bound_low_ms=2.5,
+        resource_target_low_ms=2.5,
         current_q95_ms=10.0,
         current_q05_ms=9.0,
-        lower_bound_high_ms=9.0,
+        resource_target_high_ms=9.0,
     )
     assert result["at_least_25_percent_of_ceiling_established"]
     assert not result["less_than_10_percent_residual_established"]
     assert result["robust_minimum_efficiency_percent"] == 25.0
+    assert result["residual_relative_to_resource_target_percent_range"] == [
+        0.0,
+        300.0,
+    ]
 
 
 def test_sensitivity_residual_can_pass_only_at_robust_edge() -> None:
     result = criteria_from_ranges(
-        lower_bound_low_ms=10.0,
+        resource_target_low_ms=10.0,
         current_q95_ms=10.9,
         current_q05_ms=10.1,
-        lower_bound_high_ms=10.2,
+        resource_target_high_ms=10.2,
     )
     assert result["at_least_25_percent_of_ceiling_established"]
     assert result["less_than_10_percent_residual_established"]

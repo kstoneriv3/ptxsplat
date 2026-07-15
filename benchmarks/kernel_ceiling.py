@@ -16,10 +16,10 @@ import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Iterable, Sequence
+from typing import Any, Callable, Iterable, Literal, Sequence
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 SEED = 42
 WIDTH = 1920
 HEIGHT = 1080
@@ -409,6 +409,101 @@ def parse_number(value: Any) -> float:
     return float(text)
 
 
+NCUMetricDimension = Literal["time", "bytes"]
+
+
+@dataclass(frozen=True)
+class NormalizedNCUMetric:
+    dimension: NCUMetricDimension
+    original_value: str
+    original_unit: str
+    normalized_value: float
+    normalized_unit: str
+
+    def as_dict(self) -> dict[str, str | float]:
+        return {
+            "dimension": self.dimension,
+            "original_value": self.original_value,
+            "original_unit": self.original_unit,
+            "normalized_value": self.normalized_value,
+            "normalized_unit": self.normalized_unit,
+        }
+
+
+_NCU_TIME_TO_MS = {
+    "ns": 1e-6,
+    "nsecond": 1e-6,
+    "nanosecond": 1e-6,
+    "nanoseconds": 1e-6,
+    "us": 1e-3,
+    "usecond": 1e-3,
+    "microsecond": 1e-3,
+    "microseconds": 1e-3,
+    "ms": 1.0,
+    "msecond": 1.0,
+    "millisecond": 1.0,
+    "milliseconds": 1.0,
+    "s": 1e3,
+    "second": 1e3,
+    "seconds": 1e3,
+}
+
+_NCU_BYTES_TO_BYTES = {
+    "B": 1.0,
+    "byte": 1.0,
+    "bytes": 1.0,
+    "KB": 1e3,
+    "kB": 1e3,
+    "Kbyte": 1e3,
+    "Kbytes": 1e3,
+    "MB": 1e6,
+    "Mbyte": 1e6,
+    "Mbytes": 1e6,
+    "GB": 1e9,
+    "Gbyte": 1e9,
+    "Gbytes": 1e9,
+    "KiB": float(2**10),
+    "Kibyte": float(2**10),
+    "Kibytes": float(2**10),
+    "MiB": float(2**20),
+    "Mibyte": float(2**20),
+    "Mibytes": float(2**20),
+    "GiB": float(2**30),
+    "Gibyte": float(2**30),
+    "Gibytes": float(2**30),
+}
+
+
+def normalize_ncu_metric(
+    value: Any, unit: str, dimension: NCUMetricDimension
+) -> NormalizedNCUMetric:
+    original_value = str(value)
+    original_unit = str(unit).strip()
+    numeric = parse_number(value)
+    if dimension == "time":
+        scale = _NCU_TIME_TO_MS.get(original_unit)
+        if scale is None:
+            raise ValueError(f"unsupported NCU time unit {original_unit!r}")
+        normalized_unit = "ms"
+    elif dimension == "bytes":
+        base_unit, separator, qualifier = original_unit.partition("/")
+        if separator and qualifier != "block":
+            raise ValueError(f"unsupported NCU byte unit {original_unit!r}")
+        scale = _NCU_BYTES_TO_BYTES.get(base_unit)
+        if scale is None:
+            raise ValueError(f"unsupported NCU byte unit {original_unit!r}")
+        normalized_unit = "byte/block" if qualifier else "byte"
+    else:
+        raise ValueError(f"unsupported NCU metric dimension {dimension!r}")
+    return NormalizedNCUMetric(
+        dimension=dimension,
+        original_value=original_value,
+        original_unit=original_unit,
+        normalized_value=numeric * scale,
+        normalized_unit=normalized_unit,
+    )
+
+
 def _percentile(values: Sequence[float], percent: float) -> float:
     ordered = sorted(values)
     if not ordered:
@@ -587,17 +682,20 @@ def independent_resource_bound_ms(resources_ms: dict[str, float]) -> dict[str, A
 
 
 def criteria_from_ranges(
-    *, lower_bound_low_ms: float, current_q95_ms: float, current_q05_ms: float,
-    lower_bound_high_ms: float
+    *, resource_target_low_ms: float, current_q95_ms: float, current_q05_ms: float,
+    resource_target_high_ms: float
 ) -> dict[str, Any]:
-    robust_efficiency = 100.0 * lower_bound_low_ms / current_q95_ms
-    worst_residual = 100.0 * (current_q95_ms / lower_bound_low_ms - 1.0)
+    robust_efficiency = 100.0 * resource_target_low_ms / current_q95_ms
+    worst_residual = 100.0 * (current_q95_ms / resource_target_low_ms - 1.0)
     best_residual = max(
-        0.0, 100.0 * (current_q05_ms / lower_bound_high_ms - 1.0)
+        0.0, 100.0 * (current_q05_ms / resource_target_high_ms - 1.0)
     )
     return {
         "robust_minimum_efficiency_percent": robust_efficiency,
-        "residual_relative_to_direct_ptx_percent_range": [best_residual, worst_residual],
+        "residual_relative_to_resource_target_percent_range": [
+            best_residual,
+            worst_residual,
+        ],
         "at_least_25_percent_of_ceiling_established": robust_efficiency >= 25.0,
         "less_than_10_percent_residual_established": worst_residual < 10.0,
     }
@@ -1244,32 +1342,6 @@ def command_run(args: argparse.Namespace) -> int:
     return 0
 
 
-def _metric_ms(value: str, unit: str) -> float:
-    numeric = parse_number(value)
-    scale = {
-        "second": 1000.0,
-        "s": 1000.0,
-        "msecond": 1.0,
-        "ms": 1.0,
-        "usecond": 1e-3,
-        "us": 1e-3,
-        "nsecond": 1e-6,
-        "ns": 1e-6,
-    }.get(unit)
-    if scale is None:
-        raise ValueError(f"unsupported time unit {unit!r}")
-    return numeric * scale
-
-
-def _metric_bytes(value: str, unit: str) -> float:
-    numeric = parse_number(value)
-    unit = unit.split("/", 1)[0]
-    scale = {"byte": 1.0, "Kbyte": 1e3, "Mbyte": 1e6, "Gbyte": 1e9}.get(unit)
-    if scale is None:
-        raise ValueError(f"unsupported byte unit {unit!r}")
-    return numeric * scale
-
-
 def _ncu_kernel_summary(
     raw_text: str,
     details_text: str,
@@ -1305,21 +1377,58 @@ def _ncu_kernel_summary(
         return [parse_number(row[name]) for row in rows if row.get(name, "")]
 
     durations = [
-        _metric_ms(row["gpu__time_duration.sum"], units["gpu__time_duration.sum"])
+        normalize_ncu_metric(
+            row["gpu__time_duration.sum"], units["gpu__time_duration.sum"], "time"
+        )
+        for row in rows
+    ]
+    dram_bytes = [
+        normalize_ncu_metric(
+            row["dram__bytes.sum"], units["dram__bytes.sum"], "bytes"
+        )
+        for row in rows
+    ]
+    l2_bytes = [
+        normalize_ncu_metric(
+            row["lts__t_bytes.sum"], units["lts__t_bytes.sum"], "bytes"
+        )
+        for row in rows
+    ]
+    shared_load_bytes = [
+        normalize_ncu_metric(
+            row["sm__sass_data_bytes_mem_shared_op_ld.sum"],
+            units["sm__sass_data_bytes_mem_shared_op_ld.sum"],
+            "bytes",
+        )
+        for row in rows
+    ]
+    shared_store_bytes = [
+        normalize_ncu_metric(
+            row["sm__sass_data_bytes_mem_shared_op_st.sum"],
+            units["sm__sass_data_bytes_mem_shared_op_st.sum"],
+            "bytes",
+        )
         for row in rows
     ]
     result = {
         "kernel": rows[0]["Kernel Name"],
         "launches_profiled": len(rows),
-        "duration_ms": summarize(durations),
+        "duration_ms": summarize(
+            [metric.normalized_value for metric in durations]
+        ),
         "dram_bytes": statistics.median(
-            _metric_bytes(row["dram__bytes.sum"], units["dram__bytes.sum"])
-            for row in rows
+            metric.normalized_value for metric in dram_bytes
         ),
         "l2_bytes": statistics.median(
-            _metric_bytes(row["lts__t_bytes.sum"], units["lts__t_bytes.sum"])
-            for row in rows
+            metric.normalized_value for metric in l2_bytes
         ),
+        "unit_normalization_provenance": {
+            "duration": [metric.as_dict() for metric in durations],
+            "dram": [metric.as_dict() for metric in dram_bytes],
+            "l2": [metric.as_dict() for metric in l2_bytes],
+            "shared_load": [metric.as_dict() for metric in shared_load_bytes],
+            "shared_store": [metric.as_dict() for metric in shared_store_bytes],
+        },
         "l2_throughput_pct_of_peak": statistics.median(
             values("lts__throughput.avg.pct_of_peak_sustained_elapsed")
         ),
@@ -1333,8 +1442,12 @@ def _ncu_kernel_summary(
             "all_fp32": statistics.median(values("smsp__sass_thread_inst_executed_op_fp32_pred_on.sum")),
         },
         "shared_data_bytes": {
-            "load": statistics.median(values("sm__sass_data_bytes_mem_shared_op_ld.sum")),
-            "store": statistics.median(values("sm__sass_data_bytes_mem_shared_op_st.sum")),
+            "load": statistics.median(
+                metric.normalized_value for metric in shared_load_bytes
+            ),
+            "store": statistics.median(
+                metric.normalized_value for metric in shared_store_bytes
+            ),
         },
         "global_reduction_requests": statistics.median(
             values("l1tex__t_requests_pipe_lsu_mem_global_op_red.sum")
@@ -1455,12 +1568,18 @@ def _ncu_micro_summaries(
             if expected["opcode"] is not None
             else 0
         )
+        duration = normalize_ncu_metric(
+            row["gpu__time_duration.sum"], units["gpu__time_duration.sum"], "time"
+        )
+        dynamic_shared_memory = normalize_ncu_metric(
+            row["launch__shared_mem_per_block_dynamic"],
+            units["launch__shared_mem_per_block_dynamic"],
+            "bytes",
+        )
         result[spec.name] = {
             "kernel": row["Kernel Name"],
             "sass_function": function_name,
-            "duration_ms": _metric_ms(
-                row["gpu__time_duration.sum"], units["gpu__time_duration.sum"]
-            ),
+            "duration_ms": duration.normalized_value,
             "achieved_occupancy_pct": parse_number(
                 row["sm__warps_active.avg.pct_of_peak_sustained_active"]
             ),
@@ -1471,10 +1590,7 @@ def _ncu_micro_summaries(
                 "allocated_registers_per_thread": parse_number(
                     row["launch__registers_per_thread_allocated"]
                 ),
-                "dynamic_shared_memory_bytes": _metric_bytes(
-                    row["launch__shared_mem_per_block_dynamic"],
-                    units["launch__shared_mem_per_block_dynamic"],
-                ),
+                "dynamic_shared_memory_bytes": dynamic_shared_memory.normalized_value,
                 "occupancy_limit_register_ctas": parse_number(
                     row["launch__occupancy_limit_registers"]
                 ),
@@ -1484,6 +1600,10 @@ def _ncu_micro_summaries(
                 "occupancy_limit_warp_ctas": parse_number(
                     row["launch__occupancy_limit_warps"]
                 ),
+            },
+            "unit_normalization_provenance": {
+                "duration": duration.as_dict(),
+                "dynamic_shared_memory": dynamic_shared_memory.as_dict(),
             },
             "dynamic_basic_opcode_counts": opcode_mix,
             "dynamic_sass_subopcode_counts": subopcodes,
@@ -1638,13 +1758,23 @@ def _kernel_model(
         ):
             throughput_floor_applied[resource] = operation_terms[resource]
             operation_terms[resource] = current_wrapper_duration_ms
-    operation = independent_resource_bound_ms(operation_terms)
+    operation_bound = independent_resource_bound_ms(operation_terms)
+    operation_target = {
+        "equation": operation_bound["equation"],
+        "terms_ms": operation_bound["terms_ms"],
+        "limiting_resource": operation_bound["limiting_resource"],
+        "target_ms": operation_bound["lower_bound_ms"],
+        "interpretation": (
+            "Empirical sustained resource target from independent probe rates. "
+            "It is not a physical latency lower bound or an achievable direct-PTX claim."
+        ),
+    }
     return {
         "current_non_profiled_wrapper_duration_ms": current_wrapper_duration_ms,
         "ncu_profiled_duration_ms": profiled_duration_ms,
         "ncu_derived_l2_ceiling_gb_s": l2_ceiling_gbs,
         "optimistic_l2_only_roofline": old,
-        "operation_aware_same_algorithm_direct_ptx": operation,
+        "operation_aware_empirical_sustained_resource_target": operation_target,
         "observed_exact_kernel_throughput_floor": {
             "rule": "A ceiling rate cannot be lower than the rate already sustained by the exact kernel; candidate terms above the non-profiled wrapper duration are capped at that conservative upper bound.",
             "uncapped_terms_ms": throughput_floor_applied,
@@ -1653,14 +1783,16 @@ def _kernel_model(
     }
 
 
-def _combine_stage_models(models: dict[str, dict[str, Any]], key: str) -> dict[str, Any]:
-    forward = models["forward"][key]["lower_bound_ms"]
-    backward = models["backward"][key]["lower_bound_ms"]
+def _combine_stage_models(
+    models: dict[str, dict[str, Any]], key: str, value_key: str
+) -> dict[str, Any]:
+    forward = models["forward"][key][value_key]
+    backward = models["backward"][key][value_key]
     return {
-        "equation": "forward lower bound + backward lower bound (sequential kernel stages)",
+        "equation": f"forward {value_key} + backward {value_key} (sequential stages)",
         "forward_ms": forward,
         "backward_ms": backward,
-        "lower_bound_ms": forward + backward,
+        value_key: forward + backward,
     }
 
 
@@ -1752,29 +1884,36 @@ def command_analyze(args: argparse.Namespace) -> int:
         }
         current["combined_ms"] = current["forward_ms"] + current["backward_ms"]
         for stage in ("forward", "backward"):
-            for model_key in (
-                "optimistic_l2_only_roofline",
-                "operation_aware_same_algorithm_direct_ptx",
+            for model_key, value_key in (
+                ("optimistic_l2_only_roofline", "lower_bound_ms"),
+                (
+                    "operation_aware_empirical_sustained_resource_target",
+                    "target_ms",
+                ),
             ):
-                lower = stage_models[stage][model_key]["lower_bound_ms"]
+                target = stage_models[stage][model_key][value_key]
                 stage_models[stage][model_key]["efficiency_percent"] = (
-                    100.0 * lower / current[f"{stage}_ms"]
+                    100.0 * target / current[f"{stage}_ms"]
                 )
-                stage_models[stage][model_key]["residual_relative_to_estimate_percent"] = (
-                    100.0 * (current[f"{stage}_ms"] / lower - 1.0)
+                stage_models[stage][model_key]["residual_relative_to_target_percent"] = (
+                    100.0 * (current[f"{stage}_ms"] / target - 1.0)
                 )
         combined_old = _combine_stage_models(
-            stage_models, "optimistic_l2_only_roofline"
+            stage_models, "optimistic_l2_only_roofline", "lower_bound_ms"
         )
         combined_operation = _combine_stage_models(
-            stage_models, "operation_aware_same_algorithm_direct_ptx"
+            stage_models,
+            "operation_aware_empirical_sustained_resource_target",
+            "target_ms",
         )
-        for combined in (combined_old, combined_operation):
-            combined["efficiency_percent"] = (
-                100.0 * combined["lower_bound_ms"] / current["combined_ms"]
-            )
-            combined["residual_relative_to_estimate_percent"] = 100.0 * (
-                current["combined_ms"] / combined["lower_bound_ms"] - 1.0
+        for combined, value_key in (
+            (combined_old, "lower_bound_ms"),
+            (combined_operation, "target_ms"),
+        ):
+            target = combined[value_key]
+            combined["efficiency_percent"] = 100.0 * target / current["combined_ms"]
+            combined["residual_relative_to_target_percent"] = 100.0 * (
+                current["combined_ms"] / target - 1.0
             )
         scenarios[scenario] = {
             "settings": settings,
@@ -1782,7 +1921,9 @@ def command_analyze(args: argparse.Namespace) -> int:
             "stages": stage_models,
             "combined": {
                 "optimistic_l2_only_roofline": combined_old,
-                "operation_aware_same_algorithm_direct_ptx": combined_operation,
+                "operation_aware_empirical_sustained_resource_target": (
+                    combined_operation
+                ),
             },
         }
 
@@ -1792,23 +1933,25 @@ def command_analyze(args: argparse.Namespace) -> int:
     current_q95 = (
         raster_timings["forward"]["q95"] + raster_timings["backward"]["q95"]
     )
-    scenario_lower_bounds = [
-        scenario["combined"]["operation_aware_same_algorithm_direct_ptx"][
-            "lower_bound_ms"
+    scenario_resource_targets = [
+        scenario["combined"][
+            "operation_aware_empirical_sustained_resource_target"
+        ][
+            "target_ms"
         ]
         for scenario in scenarios.values()
     ]
-    lower_low = min(scenario_lower_bounds)
-    lower_high = min(max(scenario_lower_bounds), current_q05)
+    target_low = min(scenario_resource_targets)
+    target_high = min(max(scenario_resource_targets), current_q05)
     criteria = criteria_from_ranges(
-        lower_bound_low_ms=lower_low,
+        resource_target_low_ms=target_low,
         current_q95_ms=current_q95,
         current_q05_ms=current_q05,
-        lower_bound_high_ms=lower_high,
+        resource_target_high_ms=target_high,
     )
     central_operation = scenarios["central"]["combined"][
-        "operation_aware_same_algorithm_direct_ptx"
-    ]["lower_bound_ms"]
+        "operation_aware_empirical_sustained_resource_target"
+    ]["target_ms"]
     central_old = scenarios["central"]["combined"][
         "optimistic_l2_only_roofline"
     ]["lower_bound_ms"]
@@ -1842,33 +1985,35 @@ def command_analyze(args: argparse.Namespace) -> int:
         + ncu_profiled_current["backward_ms"]
     )
     profile_comparable: dict[str, Any] = {"current": ncu_profiled_current}
-    for model_key in (
-        "optimistic_l2_only_roofline",
-        "operation_aware_same_algorithm_direct_ptx",
+    for model_key, value_key in (
+        ("optimistic_l2_only_roofline", "lower_bound_ms"),
+        (
+            "operation_aware_empirical_sustained_resource_target",
+            "target_ms",
+        ),
     ):
         stage_result: dict[str, Any] = {}
         for stage in ("forward", "backward"):
-            lower = scenarios["central"]["stages"][stage][model_key][
-                "lower_bound_ms"
-            ]
+            target = scenarios["central"]["stages"][stage][model_key][value_key]
             stage_result[stage] = {
-                "lower_bound_ms": lower,
+                value_key: target,
                 "efficiency_percent": (
-                    100.0 * lower / ncu_profiled_current[f"{stage}_ms"]
+                    100.0 * target / ncu_profiled_current[f"{stage}_ms"]
                 ),
             }
-        combined_lower = stage_result["forward"]["lower_bound_ms"] + stage_result[
-            "backward"
-        ]["lower_bound_ms"]
+        combined_target = (
+            stage_result["forward"][value_key]
+            + stage_result["backward"][value_key]
+        )
         profile_comparable[model_key] = {
             "stages": stage_result,
             "combined": {
-                "lower_bound_ms": combined_lower,
+                value_key: combined_target,
                 "efficiency_percent": (
-                    100.0 * combined_lower / ncu_profiled_current["combined_ms"]
+                    100.0 * combined_target / ncu_profiled_current["combined_ms"]
                 ),
-                "residual_relative_to_estimate_percent": 100.0
-                * (ncu_profiled_current["combined_ms"] / combined_lower - 1.0),
+                "residual_relative_to_target_percent": 100.0
+                * (ncu_profiled_current["combined_ms"] / combined_target - 1.0),
             },
         }
     artifacts = []
@@ -1891,14 +2036,15 @@ def command_analyze(args: argparse.Namespace) -> int:
         "case": measurements["raster"]["case"],
         "exact_commands": commands,
         "methodology": {
-            "kernel_bound_equation": "max(FP32, DRAM, L2, shared, MUFU, barrier, reduction issue, reduction dependency, REDG atomic, launch/tail)",
-            "combined_bound_equation": "forward max-bound + backward max-bound because the two kernels execute sequentially",
+            "kernel_resource_target_equation": "max(FP32, DRAM, L2, shared, MUFU, barrier, reduction issue, reduction dependency, REDG atomic, launch/tail)",
+            "combined_resource_target_equation": "forward max-target + backward max-target because the two kernels execute sequentially",
             "overlap_rule": "Independent resources within one kernel are not summed. EX2+RCP and LDS+STS are summed only within their single shared issue path; they are exclusive demands on that resource.",
             "current_latency_basis": "Non-profiled CUDA-event wrapper samples. Forward contains exactly one promoted raster launch. Backward includes the promoted launch plus four required output zero-initializations, so its measured latency is a conservative upper bound for the kernel and the reported efficiency is a lower bound.",
             "ncu_latency_use": "NCU duration is retained only for profile-comparable reporting and deriving the NCU L2 sustained peak; replay-perturbed duration is not the primary current latency.",
+            "ncu_unit_normalization": "Time metrics are normalized to milliseconds and byte metrics to decimal bytes while retaining raw values and units; unknown units fail analysis.",
             "same_algorithm_definition": "same candidate traversal, staging batches, synchronization, warp reductions, gradient atomics, and transcendental operations as the promoted CUDA/SASS kernels",
-            "direct_ptx_interpretation": "empirical lower-latency bound for ideal direct PTX retaining the exact algorithmic minimum operations; it is not a claim that all resource ceilings are simultaneously attainable",
-            "residual_definition": "100 * (current exact-kernel latency / same-algorithm direct-PTX estimate - 1)",
+            "empirical_resource_target_interpretation": "The operation-aware max term is an empirical sustained resource target from independent probe rates. It is neither a physical lower latency bound nor an achievable direct-PTX claim, because the rates need not be simultaneously attainable by the production kernel.",
+            "residual_definition": "100 * (current exact-kernel latency / empirical sustained resource target - 1)",
         },
         "empirical_reference_ceilings": {
             "fp32_tflops": fp32_ceiling,
@@ -1930,20 +2076,23 @@ def command_analyze(args: argparse.Namespace) -> int:
         "non_profiled_raster_wrapper_timings": measurements["raster"],
         "sensitivity": {
             "scenarios": scenarios,
-            "same_algorithm_direct_ptx_combined_ms_range": [lower_low, lower_high],
+            "empirical_sustained_resource_target_combined_ms_range": [
+                target_low,
+                target_high,
+            ],
             "current_non_profiled_wrapper_combined_ms_q05_q95": [current_q05, current_q95],
-            "central_operation_aware_efficiency_percent": scenarios["central"]["combined"]["operation_aware_same_algorithm_direct_ptx"]["efficiency_percent"],
-            "central_residual_relative_to_direct_ptx_percent": scenarios["central"]["combined"]["operation_aware_same_algorithm_direct_ptx"]["residual_relative_to_estimate_percent"],
+            "central_operation_aware_efficiency_percent": scenarios["central"]["combined"]["operation_aware_empirical_sustained_resource_target"]["efficiency_percent"],
+            "central_residual_relative_to_resource_target_percent": scenarios["central"]["combined"]["operation_aware_empirical_sustained_resource_target"]["residual_relative_to_target_percent"],
         },
         "ceiling_distinctions": {
             "existing_official_optimistic_l2_only_combined_efficiency_percent": 18.48,
             "fresh_non_profiled_wrapper_optimistic_l2_only": scenarios["central"]["combined"]["optimistic_l2_only_roofline"],
-            "operation_aware_same_algorithm_direct_ptx_non_profiled_wrapper": scenarios["central"]["combined"]["operation_aware_same_algorithm_direct_ptx"],
+            "operation_aware_empirical_sustained_resource_target_non_profiled_wrapper": scenarios["central"]["combined"]["operation_aware_empirical_sustained_resource_target"],
             "ncu_profile_comparable_not_primary_latency": profile_comparable,
             "possible_algorithm_changing_headroom": {
-                "same_algorithm_bound_over_l2_only_bound": central_operation / central_old,
-                "interpretation": "Changing traversal/reduction/accumulation may remove operation-aware terms and approach the L2-only bound. Reducing L2 traffic or useful work could go further and is deliberately not quantified by this same-algorithm model.",
-                "not_counted_as_direct_ptx_headroom": True,
+                "empirical_resource_target_over_l2_only_bound": central_operation / central_old,
+                "interpretation": "Changing traversal/reduction/accumulation may remove operation-aware terms and approach the L2-only physical bound. Reducing L2 traffic or useful work could go further and is deliberately not quantified by this resource target.",
+                "not_an_achievable_direct_ptx_claim": True,
             },
         },
         "criteria": criteria,
@@ -1959,7 +2108,7 @@ def command_analyze(args: argparse.Namespace) -> int:
             "The central REDG probe uses eight warp leaders contending on each of nine addresses within a CTA, matching the absgrad=False backward accumulation pattern; four-warp and eight-CTA contention probes bound sensitivity.",
             "Balanced barrier throughput is central. An eight-dependent-FFMA half-warp skew probe is intentionally conservative and used only in sensitivity.",
             "InstructionStats reports dynamic warp-level opcode executions. Per-PC mapping separates MUFU.EX2/RCP and BAR variants using exact captured SASS.",
-            "A lower-latency bound can expose that a criterion is not established; it cannot prove an implementation can attain all ceilings at once.",
+            "An empirical resource target can expose that a criterion is not established; it cannot prove an implementation can attain all resource rates at once.",
         ],
         "artifact_manifest_excluding_raw_ncu_reports": artifacts,
         "raw_ncu_reports_retained_untracked": [
