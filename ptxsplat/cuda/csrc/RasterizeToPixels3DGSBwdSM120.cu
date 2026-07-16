@@ -60,8 +60,13 @@ __global__ void rasterize_to_pixels_3dgs_bwd_sm120_float4_kernel(
     uint32_t image_id = block.group_index().x;
     uint32_t tile_id =
         block.group_index().y * tile_width + block.group_index().z;
-    uint32_t i = block.group_index().y * tile_size + block.thread_index().y;
-    uint32_t j = block.group_index().z * tile_size + block.thread_index().x;
+    const uint32_t tr = block.thread_rank();
+    const uint32_t warp_id = tr >> 5;
+    const uint32_t lane = tr & 31;
+    const uint32_t local_x = ((warp_id & 1) << 3) + (lane & 7);
+    const uint32_t local_y = ((warp_id >> 1) << 2) + (lane >> 3);
+    uint32_t i = block.group_index().y * tile_size + local_y;
+    uint32_t j = block.group_index().z * tile_size + local_x;
 
     tile_offsets += image_id * tile_height * tile_width;
     render_alphas += image_id * image_height * image_width;
@@ -131,7 +136,6 @@ __global__ void rasterize_to_pixels_3dgs_bwd_sm120_float4_kernel(
 
     // collect and process batches of gaussians
     // each thread loads one gaussian at a time before rasterizing
-    const uint32_t tr = block.thread_rank();
     cg::thread_block_tile<32> warp = cg::tiled_partition<32>(block);
     const int32_t warp_bin_final =
         cg::reduce(warp, bin_final, cg::greater<int>());

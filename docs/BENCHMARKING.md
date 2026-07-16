@@ -168,6 +168,13 @@ instructions. The reduction and REDG probes execute the same nine-value
 warp maximum. Probe output checksums and probe NCU counts guard against compiler
 elimination.
 
+The promoted backward pixel mapping gives each warp an 8-column by 4-row
+footprint: `local_x = ((warp_id & 1) << 3) + (lane & 7)` and
+`local_y = ((warp_id >> 1) << 2) + (lane >> 3)`. Across eight warps this is a
+bijection over the 16 by 16 tile. Preserve this mapping when measuring changes
+to the adjacent stage-major reduction sequence so lane mapping and reduction
+ordering remain independently attributable.
+
 NCU CSV time and byte metrics are normalized before analysis while retaining
 their original value and unit. Time units `ns`, `us`, `ms`, and `s` normalize to
 milliseconds. NCU decimal `byte`/`Kbyte`/`Mbyte`/`Gbyte` units normalize to
