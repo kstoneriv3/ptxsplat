@@ -9,6 +9,22 @@ The first performance target is differentiable 3D Gaussian rendering on an RTX
 5090: one pinhole camera, packed projection, classic RGB rasterization,
 spherical harmonics through degree 3, backgrounds, and full backward gradients.
 
+## Kernel Performance
+
+On the fixed 1080p grid-7 garden workload, the promoted SM120 raster kernels
+reduce isolated median latency by **17.7% forward** and **17.0% backward**
+relative to the inherited gsplat 1.5.3 implementation.
+
+![Isolated raster kernel latency comparing gsplat 1.5.3 and ptxsplat SM120](docs/source/assets/kernel-benchmark.svg)
+
+Lower is better. Each series contains 500 CUDA-event samples. Forward is a
+controlled same-binary comparison; backward compares the same fixed workload
+and timing protocol across the validated reference and final-clean checkpoints.
+The backward wrapper includes four required output zero-initializations. These
+are isolated raster-stage results, not end-to-end rendering or training claims.
+See the [frozen chart data](benchmarks/kernel_benchmark.json) and
+[benchmark protocol](docs/BENCHMARKING.md).
+
 ## Status
 
 - Python API available as `ptxsplat`.
@@ -25,8 +41,8 @@ spherical harmonics through degree 3, backgrounds, and full backward gradients.
 - The optional `gsplat` import overload is packaged separately to keep upstream
   gsplat co-installable during development.
 
-No performance claim is made until the benchmark protocol in
-[`docs/BENCHMARKING.md`](docs/BENCHMARKING.md) produces a reproducible result.
+Broader end-to-end and training claims remain gated by the reproducible
+benchmark protocol in [`docs/BENCHMARKING.md`](docs/BENCHMARKING.md).
 
 ## Development Environment
 

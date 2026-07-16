@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "benchmark": "isolated-raster-kernel-latency",
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 5090",
+    "compute_capability": "SM120",
+    "driver": "580.95.05",
+    "cuda": "12.8",
+    "pytorch": "2.9.1+cu128",
+    "container_image_id": "sha256:b946f14f275a2441351c59a3d53bc98fb1f312fce11defecd9cc53d8320f13b2"
+  },
+  "workload": {
+    "fixture": "grid-7 garden",
+    "resolution": [
+      1920,
+      1080
+    ],
+    "packed": true,
+    "color_mode": "sh3",
+    "background": "black",
+    "gaussian_count": 5477465,
+    "visible_gaussian_count": 2363028,
+    "intersection_count": 5077392,
+    "timing": "CUDA events; 20 warmups; 5 rounds x 100 samples"
+  },
+  "measurements": [
+    {
+      "operation": "Forward",
+      "scope": "isolated raster forward wrapper; one promoted kernel launch",
+      "comparison": "controlled same-binary reference versus SM120",
+      "reference_median_ms": 1.6091360449790955,
+      "reference_ci95_ms": [
+        1.597086037695408,
+        1.6211680173873901
+      ],
+      "optimized_median_ms": 1.3236960172653198,
+      "optimized_ci95_ms": [
+        1.318176031112671,
+        1.3303383767604828
+      ],
+      "latency_reduction_percent": 17.738713181176912,
+      "sample_count_each": 500,
+      "promoted_commit": "fc88cbd32a08bb5776313bceee4ce591d7d91fbc",
+      "source_artifacts": [
+        {
+          "path": "benchmark-results/optimization-wave3/timings/final-reference-isolated.json",
+          "sha256": "a33b6fad3d562be4138d381b3938f4fd3555367b348f0751b18a829d03047eba"
+        },
+        {
+          "path": "benchmark-results/optimization-wave3/timings/final-soa384-isolated.json",
+          "sha256": "7d3093fc64df9e3bf18f7aa396b7a517211802e9fb5987efac9da2b712276916"
+        }
+      ]
+    },
+    {
+      "operation": "Backward",
+      "scope": "isolated raster backward wrapper; includes four required output zero-initializations",
+      "comparison": "fixed-workload reference and final-clean promoted checkpoints",
+      "reference_median_ms": 3.6295679807662964,
+      "reference_ci95_ms": [
+        3.604624032974243,
+        3.650946795940399
+      ],
+      "optimized_median_ms": 3.0130079984664917,
+      "optimized_ci95_ms": [
+        3.007263499498367,
+        3.0167048811912536
+      ],
+      "latency_reduction_percent": 16.987145180006603,
+      "sample_count_each": 500,
+      "promoted_commit": "a4973d5aaa40a61bfe76d88d916ce439b4d6b80f",
+      "source_artifacts": [
+        {
+          "path": "benchmark-results/optimization-wave1/timings/promotion-isolated-reference.json",
+          "sha256": "8cbdef67c3fb72648a105bfb1729d945bc7bcedd212b906894cbfbd5678a0013"
+        },
+        {
+          "path": "benchmark-results/optimization-wave16/timings/final-clean-isolated.json",
+          "sha256": "1cfa0cb65ed044a637582579deb084072c8f20937bef356ffbf503a93bed6011"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "These are isolated raster-stage measurements, not end-to-end rendering or training timings.",
+    "The backward wrapper includes four required output zero-initializations.",
+    "Forward is a controlled same-binary comparison; backward compares the same fixed workload and protocol across validated reference and final-clean checkpoints."
+  ]
+}
