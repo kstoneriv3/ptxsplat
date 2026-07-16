@@ -9,19 +9,41 @@ GID_VALUE="$(id -g)"
 
 UPSTREAM_NAME="ptxsplat-ns-compare-upstream"
 PTXSPLAT_NAME="ptxsplat-ns-compare-sm120"
-UPSTREAM_CONFIG="/workspace/results/ns-compare/upstream/tiny-synthetic/splatfacto/matched-1000/config.yml"
-PTXSPLAT_CONFIG="/workspace/results/ns-compare/ptxsplat/tiny-synthetic/splatfacto/matched-1000/config.yml"
+DEFAULT_SCENE="tiny-synthetic"
+SELECTED_SCENE=""
+UPSTREAM_CONFIG=""
+PTXSPLAT_CONFIG=""
 
 usage() {
   cat <<'EOF'
-Usage: scripts/ns-compare-viewers.sh {up|down|status|logs} [upstream|ptxsplat|all]
+Usage:
+  scripts/ns-compare-viewers.sh up [tiny-synthetic|bonsai]
+  scripts/ns-compare-viewers.sh {down|status|logs} [upstream|ptxsplat|all]
 
 Runs the two Nerfstudio comparison viewers with stable container names:
   upstream: http://localhost:7007
   ptxsplat: http://localhost:7008
 
+The default scene for `up` is tiny-synthetic. Set PTXSPLAT_NS_COMPARE_SCENE or
+pass the scene explicitly to select another matched config pair.
+
 The launcher scopes TORCHDYNAMO_DISABLE=1 to these viewer processes only.
 EOF
+}
+
+select_scene() {
+  case "${1:-${DEFAULT_SCENE}}" in
+    tiny|tiny-synthetic)
+      SELECTED_SCENE="tiny-synthetic"
+      ;;
+    bonsai)
+      SELECTED_SCENE="bonsai"
+      ;;
+    *) usage >&2; exit 2 ;;
+  esac
+
+  UPSTREAM_CONFIG="/workspace/results/ns-compare/upstream/${SELECTED_SCENE}/splatfacto/matched-1000/config.yml"
+  PTXSPLAT_CONFIG="/workspace/results/ns-compare/ptxsplat/${SELECTED_SCENE}/splatfacto/matched-1000/config.yml"
 }
 
 viewer_names() {
@@ -55,6 +77,7 @@ run_viewer() {
   local config="$4"
   local port="$5"
   local image_digest="$6"
+  local scene="$7"
   local backend_env=()
   if [[ -n "${backend}" ]]; then
     backend_env=(-e "PTXSPLAT_BACKEND=${backend}")
@@ -62,6 +85,7 @@ run_viewer() {
 
   docker run -d \
     --name "${name}" \
+    --label "ptxsplat.ns-compare.scene=${scene}" \
     --gpus 'device=0' \
     --network host \
     --shm-size 12g \
@@ -88,6 +112,7 @@ run_viewer() {
 }
 
 up() {
+  select_scene "${1:-${PTXSPLAT_NS_COMPARE_SCENE:-${DEFAULT_SCENE}}}"
   ensure_runtime_dirs
   docker image inspect "${IMAGE}" >/dev/null
   local digest
@@ -102,14 +127,16 @@ up() {
     "" \
     "${UPSTREAM_CONFIG}" \
     "7007" \
-    "${digest}"
+    "${digest}" \
+    "${SELECTED_SCENE}"
   run_viewer \
     "${PTXSPLAT_NAME}" \
     "/workspace/compat/gsplat_overload:/workspace" \
     "sm120" \
     "${PTXSPLAT_CONFIG}" \
     "7008" \
-    "${digest}"
+    "${digest}" \
+    "${SELECTED_SCENE}"
 }
 
 down() {
@@ -135,7 +162,7 @@ logs() {
 }
 
 case "${1:-}" in
-  up) up ;;
+  up) up "${2:-}" ;;
   down) down "${2:-all}" ;;
   status) status ;;
   logs) logs "${2:-all}" ;;

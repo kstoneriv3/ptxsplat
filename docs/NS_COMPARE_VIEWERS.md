@@ -4,6 +4,7 @@ Use the focused launcher for the two local Nerfstudio comparison viewers:
 
 ```bash
 scripts/ns-compare-viewers.sh up
+scripts/ns-compare-viewers.sh up bonsai
 scripts/ns-compare-viewers.sh status
 scripts/ns-compare-viewers.sh logs
 scripts/ns-compare-viewers.sh down
@@ -11,7 +12,10 @@ scripts/ns-compare-viewers.sh down
 
 `up` recreates the stable containers `ptxsplat-ns-compare-upstream` and
 `ptxsplat-ns-compare-sm120` with host networking on ports 7007 and 7008. The
-viewer command sets `TORCHDYNAMO_DISABLE=1` only around `ns-viewer`, avoiding
+default scene remains `tiny-synthetic`; pass `bonsai` or set
+`PTXSPLAT_NS_COMPARE_SCENE=bonsai` to load the real Mip-NeRF 360 comparison.
+The selected scene is stored in the `ptxsplat.ns-compare.scene` container
+label. The viewer command sets `TORCHDYNAMO_DISABLE=1` only around `ns-viewer`, avoiding
 Nerfstudio viewer-time `torch.compile` work without changing training,
 benchmarks, or the Docker image.
 
@@ -24,3 +28,15 @@ The import isolation is intentional:
   `PTXSPLAT_BACKEND=sm120`,
   `results/ns-compare/ptxsplat/tiny-synthetic/splatfacto/matched-1000/config.yml`,
   `http://localhost:7008`
+
+The Bonsai selector changes only the two config paths:
+
+- upstream:
+  `results/ns-compare/upstream/bonsai/splatfacto/matched-1000/config.yml`
+- ptxsplat:
+  `results/ns-compare/ptxsplat/bonsai/splatfacto/matched-1000/config.yml`
+
+Both Bonsai runs use the official Mip-NeRF 360 COLMAP scene at downscale 4,
+interval evaluation every eighth image, seed 42, and 1,000 training steps. The
+explicit `ceil` downscale rounding matches the dimensions of the archive's
+pre-generated `images_4` files.
