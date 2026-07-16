@@ -35,3 +35,24 @@ images are at most 32 by 32 pixels and scenes contain at most eight Gaussians.
 Gradients cover means, quaternions, scales, opacities, RGB/SH coefficients,
 backgrounds, and view matrices. Finite differences are evaluated only away
 from clipping, sorting, and early-termination discontinuities.
+
+## Low-level backward finite differences
+
+Run the low-level raster audit in the target container:
+
+```bash
+./scripts/docker-run.sh -- python3 -m benchmarks.backward_finite_difference
+```
+
+The audit writes `benchmark-results/backward-finite-difference/analysis.json`.
+It evaluates reference and SM120 raster backward gradients on two deterministic
+smooth scenes. Each scene/backend pair covers means x/y, conic xx/xy/yy, RGB
+0/1/2, and opacity with an analytic gradient and an epsilon sweep selected
+without consulting that analytic result. Smooth probes use `atol=0.0005` and
+`rtol=0.003`; an independent FP64 front-to-back formula checks rendered color
+and opacity.
+
+The record classifies alpha thresholding, the 0.999 alpha clamp, negative
+sigma rejection, early termination, and discrete tile/last-id changes as
+nonsmooth or discrete exclusions. The low-level fixtures keep intersections
+fixed and retain positive margins from each continuous boundary.
