@@ -6,7 +6,6 @@ on:
     branches: [main]
   release:
     types: [created]
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -15,26 +14,26 @@ jobs:
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
         with:
           submodules: 'recursive'
-          
-      - uses: actions/setup-python@v3
+
+      - uses: actions/setup-python@v6
         with:
-          python-version: '3.9'
-      
+          python-version: '3.10'
+
       - name: Install dependencies
         run: |
           pip install -r docs/requirements.txt
           pip install torch==2.0.0 --index-url https://download.pytorch.org/whl/cpu
           BUILD_NO_CUDA=1 pip install .
-      
+
       # Get version.
       - name: Get version + subdirectory
         run: |
           VERSION=$(python -c "from ptxsplat import __version__; print(__version__)")
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "DOCS_SUBDIR=versions/$VERSION" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "DOCS_SUBDIR=versions/$VERSION" >> "$GITHUB_ENV"
 
       # Hack to overwrite version.
       - name: Set version to 'main' for pushes (this will appear in the doc banner)
@@ -45,7 +44,7 @@ jobs:
       # Get version.
       - name: Override subdirectory to `main/` for pushes
         run: |
-          echo "DOCS_SUBDIR=main" >> $GITHUB_ENV
+          echo "DOCS_SUBDIR=main" >> "$GITHUB_ENV"
         if: github.event_name == 'push'
 
       - name: Sphinx build

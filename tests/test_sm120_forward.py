@@ -3,8 +3,6 @@ import os
 import pytest
 import torch
 
-from ptxsplat.cuda._backend import _C
-
 
 DEVICE = torch.device("cuda:0")
 pytestmark = [
@@ -29,15 +27,17 @@ def _inputs(packed: bool, empty: bool = False):
         dim=-1,
     )
     means = torch.stack((means, means + torch.tensor([0.125, -0.125], device=DEVICE)))
-    conics = torch.tensor([0.005, 0.0001, 0.006], device=DEVICE).expand(
+    conics = (
+        torch.tensor([0.005, 0.0001, 0.006], device=DEVICE)
+        .expand(images, count, 3)
+        .clone()
+    )
+    colors = torch.linspace(0.01, 0.99, images * count * 3, device=DEVICE).reshape(
         images, count, 3
-    ).clone()
-    colors = torch.linspace(
-        0.01, 0.99, images * count * 3, device=DEVICE
-    ).reshape(images, count, 3)
-    opacities = torch.linspace(0.08, 0.22, count, device=DEVICE).expand(
-        images, count
-    ).clone()
+    )
+    opacities = (
+        torch.linspace(0.08, 0.22, count, device=DEVICE).expand(images, count).clone()
+    )
     offsets = torch.zeros((images, 2, 2), dtype=torch.int32, device=DEVICE)
     flatten_ids = torch.empty(0, dtype=torch.int32, device=DEVICE)
     if not empty:
@@ -62,9 +62,7 @@ def _inputs(packed: bool, empty: bool = False):
                 dtype=torch.int32,
             ).reshape(images, 2, 2)
         )
-    backgrounds = torch.tensor(
-        [[0.1, 0.2, 0.3], [0.7, 0.5, 0.25]], device=DEVICE
-    )
+    backgrounds = torch.tensor([[0.1, 0.2, 0.3], [0.7, 0.5, 0.25]], device=DEVICE)
     masks = torch.ones((images, 2, 2), dtype=torch.bool, device=DEVICE)
     if packed:
         means = means.reshape(-1, 2)
@@ -87,6 +85,8 @@ def _inputs(packed: bool, empty: bool = False):
 
 
 def _run(backend: str, inputs: dict):
+    from ptxsplat.cuda._backend import _C
+
     previous_backend = os.environ.get("PTXSPLAT_BACKEND")
     previous_variant = os.environ.get("PTXSPLAT_SM120_FORWARD_VARIANT")
     try:

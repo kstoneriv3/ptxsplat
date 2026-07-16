@@ -349,20 +349,110 @@ class ProbeSpec:
 
 
 PROBE_SPECS: tuple[ProbeSpec, ...] = (
-    ProbeSpec("reduction_ilp9", 0, 5, 128, operation="shuffle_add_pairs", operations_per_cta_loop=8 * 45),
-    ProbeSpec("reduction_chain", 1, 5, 512, operation="five_stage_reductions", operations_per_cta_loop=8),
-    ProbeSpec("redux_max_chain", 11, 5, 512, operation="redux_max_warp_instructions", operations_per_cta_loop=8),
-    ProbeSpec("atomic_warp4", 2, 5, 64, active_warps=4, operation="redg_fp32", operations_per_cta_loop=4 * 9),
-    ProbeSpec("atomic_warp8", 2, 5, 64, active_warps=8, operation="redg_fp32", operations_per_cta_loop=8 * 9),
-    ProbeSpec("atomic_crosscta8", 2, 5, 64, active_warps=8, contention_ctas=8, operation="redg_fp32", operations_per_cta_loop=8 * 9),
+    ProbeSpec(
+        "reduction_ilp9",
+        0,
+        5,
+        128,
+        operation="shuffle_add_pairs",
+        operations_per_cta_loop=8 * 45,
+    ),
+    ProbeSpec(
+        "reduction_chain",
+        1,
+        5,
+        512,
+        operation="five_stage_reductions",
+        operations_per_cta_loop=8,
+    ),
+    ProbeSpec(
+        "redux_max_chain",
+        11,
+        5,
+        512,
+        operation="redux_max_warp_instructions",
+        operations_per_cta_loop=8,
+    ),
+    ProbeSpec(
+        "atomic_warp4",
+        2,
+        5,
+        64,
+        active_warps=4,
+        operation="redg_fp32",
+        operations_per_cta_loop=4 * 9,
+    ),
+    ProbeSpec(
+        "atomic_warp8",
+        2,
+        5,
+        64,
+        active_warps=8,
+        operation="redg_fp32",
+        operations_per_cta_loop=8 * 9,
+    ),
+    ProbeSpec(
+        "atomic_crosscta8",
+        2,
+        5,
+        64,
+        active_warps=8,
+        contention_ctas=8,
+        operation="redg_fp32",
+        operations_per_cta_loop=8 * 9,
+    ),
     ProbeSpec("barrier_balanced", 3, 5, 4096, operation="cta_barriers"),
     ProbeSpec("barrier_skew8", 3, 5, 2048, skew_iterations=8, operation="cta_barriers"),
-    ProbeSpec("shared_lds128_x2", 4, 7, 2048, dynamic_smem=12_288, operation="shared_bytes", operations_per_cta_loop=THREADS * 2 * 16),
-    ProbeSpec("shared_sts128_x2", 5, 7, 2048, dynamic_smem=12_288, operation="shared_bytes", operations_per_cta_loop=THREADS * 2 * 16),
-    ProbeSpec("mufu_ex2_ilp4", 6, 5, 2048, operation="mufu_warp_instructions", operations_per_cta_loop=WARPS_PER_CTA * 4),
-    ProbeSpec("mufu_ex2_chain", 7, 5, 4096, operation="mufu_warp_instructions", operations_per_cta_loop=WARPS_PER_CTA),
-    ProbeSpec("mufu_rcp_ilp4", 8, 5, 2048, operation="mufu_warp_instructions", operations_per_cta_loop=WARPS_PER_CTA * 4),
-    ProbeSpec("mufu_rcp_chain", 9, 5, 4096, operation="mufu_warp_instructions", operations_per_cta_loop=WARPS_PER_CTA),
+    ProbeSpec(
+        "shared_lds128_x2",
+        4,
+        7,
+        2048,
+        dynamic_smem=12_288,
+        operation="shared_bytes",
+        operations_per_cta_loop=THREADS * 2 * 16,
+    ),
+    ProbeSpec(
+        "shared_sts128_x2",
+        5,
+        7,
+        2048,
+        dynamic_smem=12_288,
+        operation="shared_bytes",
+        operations_per_cta_loop=THREADS * 2 * 16,
+    ),
+    ProbeSpec(
+        "mufu_ex2_ilp4",
+        6,
+        5,
+        2048,
+        operation="mufu_warp_instructions",
+        operations_per_cta_loop=WARPS_PER_CTA * 4,
+    ),
+    ProbeSpec(
+        "mufu_ex2_chain",
+        7,
+        5,
+        4096,
+        operation="mufu_warp_instructions",
+        operations_per_cta_loop=WARPS_PER_CTA,
+    ),
+    ProbeSpec(
+        "mufu_rcp_ilp4",
+        8,
+        5,
+        2048,
+        operation="mufu_warp_instructions",
+        operations_per_cta_loop=WARPS_PER_CTA * 4,
+    ),
+    ProbeSpec(
+        "mufu_rcp_chain",
+        9,
+        5,
+        4096,
+        operation="mufu_warp_instructions",
+        operations_per_cta_loop=WARPS_PER_CTA,
+    ),
     ProbeSpec("launch_one_cta", 10, 1, 1, dynamic_smem=0, operation="launches"),
     ProbeSpec("launch_full_grid", 10, 1, 1, dynamic_smem=0, operation="launches"),
 )
@@ -516,7 +606,9 @@ def _percentile(values: Sequence[float], percent: float) -> float:
     return ordered[lower] * (upper - position) + ordered[upper] * (position - lower)
 
 
-def summarize(values: Sequence[float], *, include_samples: bool = True) -> dict[str, Any]:
+def summarize(
+    values: Sequence[float], *, include_samples: bool = True
+) -> dict[str, Any]:
     data = [float(value) for value in values]
     if not data:
         raise ValueError("summary requires samples")
@@ -574,7 +666,11 @@ def parse_ncu_csv(text: str) -> tuple[list[dict[str, str]], dict[str, str]]:
         raise ValueError("NCU CSV header is missing Kernel Name")
     units: dict[str, str] = {}
     start = 1
-    if len(rows) > 1 and len(rows[1]) == len(header) and not rows[1][header.index("Kernel Name")]:
+    if (
+        len(rows) > 1
+        and len(rows[1]) == len(header)
+        and not rows[1][header.index("Kernel Name")]
+    ):
         units = dict(zip(header, rows[1]))
         start = 2
     records = [
@@ -626,7 +722,9 @@ def select_sass_function(
 ) -> tuple[str, list[dict[str, Any]]]:
     matches = [(name, rows) for name, rows in functions.items() if substring in name]
     if len(matches) != 1:
-        raise ValueError(f"expected one SASS function containing {substring!r}, got {len(matches)}")
+        raise ValueError(
+            f"expected one SASS function containing {substring!r}, got {len(matches)}"
+        )
     return matches[0]
 
 
@@ -669,7 +767,9 @@ def reduction_algorithmic_counts(
 
 
 def independent_resource_bound_ms(resources_ms: dict[str, float]) -> dict[str, Any]:
-    finite = {name: value for name, value in resources_ms.items() if math.isfinite(value)}
+    finite = {
+        name: value for name, value in resources_ms.items() if math.isfinite(value)
+    }
     if not finite:
         raise ValueError("resource model has no finite terms")
     limiting = max(finite, key=finite.get)
@@ -682,14 +782,15 @@ def independent_resource_bound_ms(resources_ms: dict[str, float]) -> dict[str, A
 
 
 def criteria_from_ranges(
-    *, resource_target_low_ms: float, current_q95_ms: float, current_q05_ms: float,
-    resource_target_high_ms: float
+    *,
+    resource_target_low_ms: float,
+    current_q95_ms: float,
+    current_q05_ms: float,
+    resource_target_high_ms: float,
 ) -> dict[str, Any]:
     robust_efficiency = 100.0 * resource_target_low_ms / current_q95_ms
     worst_residual = 100.0 * (current_q95_ms / resource_target_low_ms - 1.0)
-    best_residual = max(
-        0.0, 100.0 * (current_q05_ms / resource_target_high_ms - 1.0)
-    )
+    best_residual = max(0.0, 100.0 * (current_q05_ms / resource_target_high_ms - 1.0))
     return {
         "robust_minimum_efficiency_percent": robust_efficiency,
         "residual_relative_to_resource_target_percent_range": [
@@ -874,9 +975,7 @@ def _measure_probes(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
         selected_timing = summarize(selected_samples)
         operations = spec.operations(sm_count)
         rates = [operations / (sample * 1e-3) for sample in samples[spec.name]]
-        selected_rates = [
-            operations / (sample * 1e-3) for sample in selected_samples
-        ]
+        selected_rates = [operations / (sample * 1e-3) for sample in selected_samples]
         probes[spec.name] = {
             "configuration": {
                 "kernel_kind": spec.kind,
@@ -896,13 +995,10 @@ def _measure_probes(args: argparse.Namespace) -> tuple[dict[str, Any], str]:
             "timing_ms": timing,
             "sustained_rate_per_second": summarize(rates),
             "round_timing_ms": [
-                summarize(round_values)
-                for round_values in samples_by_round[spec.name]
+                summarize(round_values) for round_values in samples_by_round[spec.name]
             ],
             "thermal_controlled_timing_ms": selected_timing,
-            "thermal_controlled_sustained_rate_per_second": summarize(
-                selected_rates
-            ),
+            "thermal_controlled_sustained_rate_per_second": summarize(selected_rates),
             "checksum": float(outputs[spec.name].sum().cpu()),
         }
     for spec in (item for item in PROBE_SPECS if item.kind == 10):
@@ -956,9 +1052,7 @@ def _build_raster_workload() -> dict[str, Any]:
         intrinsics,
         fixture_width,
         fixture_height,
-    ) = load_test_data(
-        data_path="assets/test_garden.npz", device="cuda", scene_grid=7
-    )
+    ) = load_test_data(data_path="assets/test_garden.npz", device="cuda", scene_grid=7)
     viewmats = viewmats[:1].contiguous()
     intrinsics = intrinsics[:1].clone()
     intrinsics[..., 0, :] *= WIDTH / fixture_width
@@ -1038,18 +1132,23 @@ def _build_raster_workload() -> dict[str, Any]:
             "visible_gaussian_count": int(meta["radii"].numel()),
             "intersection_count": int(meta["flatten_ids"].numel()),
             "nonempty_tiles": int(
-                (torch.diff(
-                    torch.cat(
-                        [
-                            meta["isect_offsets"].reshape(-1),
-                            torch.tensor(
-                                [meta["flatten_ids"].numel()],
-                                device="cuda",
-                                dtype=meta["isect_offsets"].dtype,
-                            ),
-                        ]
+                (
+                    torch.diff(
+                        torch.cat(
+                            [
+                                meta["isect_offsets"].reshape(-1),
+                                torch.tensor(
+                                    [meta["flatten_ids"].numel()],
+                                    device="cuda",
+                                    dtype=meta["isect_offsets"].dtype,
+                                ),
+                            ]
+                        )
                     )
-                ) > 0).sum().cpu()
+                    > 0
+                )
+                .sum()
+                .cpu()
             ),
             "forward_checksums": {
                 "render": float(renders.sum().cpu()),
@@ -1139,7 +1238,9 @@ def command_profile_target(args: argparse.Namespace) -> int:
         sm_count = torch.cuda.get_device_properties(0).multi_processor_count
         outputs = {
             spec.name: torch.zeros(
-                _probe_output_elements(spec, sm_count), device="cuda", dtype=torch.float32
+                _probe_output_elements(spec, sm_count),
+                device="cuda",
+                dtype=torch.float32,
             )
             for spec in PROBE_SPECS
         }
@@ -1180,7 +1281,9 @@ def command_profile_target(args: argparse.Namespace) -> int:
     return 0
 
 
-def _capture_selected_sass(binary: Path, output: Path, substrings: Sequence[str]) -> None:
+def _capture_selected_sass(
+    binary: Path, output: Path, substrings: Sequence[str]
+) -> None:
     process = subprocess.Popen(
         ["cuobjdump", "--dump-sass", str(binary)],
         stdout=subprocess.PIPE,
@@ -1211,12 +1314,12 @@ def _run_logged(
             list(command), stdout=stream, stderr=subprocess.STDOUT, text=True, env=env
         )
     if completed.returncode:
-        raise RuntimeError(f"command failed ({completed.returncode}): {' '.join(command)}")
+        raise RuntimeError(
+            f"command failed ({completed.returncode}): {' '.join(command)}"
+        )
 
 
-def _ncu_profile_command(
-    *, target: str, report: Path, launches: int
-) -> list[str]:
+def _ncu_profile_command(*, target: str, report: Path, launches: int) -> list[str]:
     kernel_filter = {
         "forward": "regex:rasterize_to_pixels_3dgs_fwd_sm120",
         "backward": "regex:rasterize_to_pixels_3dgs_bwd_sm120",
@@ -1295,7 +1398,9 @@ def command_run(args: argparse.Namespace) -> int:
         str(args.raster_samples),
     ]
     commands.append(measure_command)
-    _run_logged(measure_command, output=output_dir / "measure.log", env=os.environ.copy())
+    _run_logged(
+        measure_command, output=output_dir / "measure.log", env=os.environ.copy()
+    )
     measurements = json.loads((output_dir / "measurements.json").read_text())
 
     ptx_binary = Path("ptxsplat/csrc.so").resolve()
@@ -1308,14 +1413,35 @@ def command_run(args: argparse.Namespace) -> int:
     _capture_selected_sass(
         micro_binary,
         output_dir / "microbench.sass",
-        tuple(f"kc_{name}" for name in (
-            "reduction", "redux", "atomic", "barrier", "shared", "mufu", "empty"
-        )),
+        tuple(
+            f"kc_{name}"
+            for name in (
+                "reduction",
+                "redux",
+                "atomic",
+                "barrier",
+                "shared",
+                "mufu",
+                "empty",
+            )
+        ),
     )
     commands.extend(
         [
-            ["cuobjdump", "--dump-sass", str(ptx_binary), "|", "target-function-filter"],
-            ["cuobjdump", "--dump-sass", str(micro_binary), "|", "target-function-filter"],
+            [
+                "cuobjdump",
+                "--dump-sass",
+                str(ptx_binary),
+                "|",
+                "target-function-filter",
+            ],
+            [
+                "cuobjdump",
+                "--dump-sass",
+                str(micro_binary),
+                "|",
+                "target-function-filter",
+            ],
         ]
     )
 
@@ -1330,9 +1456,13 @@ def command_run(args: argparse.Namespace) -> int:
         commands.append(command)
         _run_logged(command, output=output_dir / f"ncu-{target}.log", env=env)
         report_file = report.with_suffix(".ncu-rep")
-        commands.append(_ncu_export(report_file, output_dir / f"ncu-{target}-raw.csv", "raw"))
         commands.append(
-            _ncu_export(report_file, output_dir / f"ncu-{target}-details.csv", "details")
+            _ncu_export(report_file, output_dir / f"ncu-{target}-raw.csv", "raw")
+        )
+        commands.append(
+            _ncu_export(
+                report_file, output_dir / f"ncu-{target}-details.csv", "details"
+            )
         )
 
     command_file = output_dir / "commands.json"
@@ -1351,7 +1481,9 @@ def _ncu_kernel_summary(
     raw_rows, units = parse_ncu_csv(raw_text)
     rows = [row for row in raw_rows if kernel_substring in row.get("Kernel Name", "")]
     if not rows:
-        raise ValueError(f"NCU raw report has no kernel containing {kernel_substring!r}")
+        raise ValueError(
+            f"NCU raw report has no kernel containing {kernel_substring!r}"
+        )
     details_rows, _ = parse_ncu_csv(details_text)
     detail_rows = [
         row for row in details_rows if kernel_substring in row.get("Kernel Name", "")
@@ -1359,12 +1491,14 @@ def _ncu_kernel_summary(
     opcode_mixes = [
         parse_opcode_mix(row["Metric Value"])
         for row in detail_rows
-        if row.get("Metric Name") == "Executed Warp-Level Instructions By Basic SASS Opcode"
+        if row.get("Metric Name")
+        == "Executed Warp-Level Instructions By Basic SASS Opcode"
     ]
     pc_instances = [
         parse_pc_instances(row["Metric Value"])
         for row in detail_rows
-        if row.get("Metric Name") == "Instructions Executed" and "0x" in row.get("Metric Value", "")
+        if row.get("Metric Name") == "Instructions Executed"
+        and "0x" in row.get("Metric Value", "")
     ]
     opcode_mix = opcode_mixes[0] if opcode_mixes else {}
     subopcodes = (
@@ -1383,9 +1517,7 @@ def _ncu_kernel_summary(
         for row in rows
     ]
     dram_bytes = [
-        normalize_ncu_metric(
-            row["dram__bytes.sum"], units["dram__bytes.sum"], "bytes"
-        )
+        normalize_ncu_metric(row["dram__bytes.sum"], units["dram__bytes.sum"], "bytes")
         for row in rows
     ]
     l2_bytes = [
@@ -1413,15 +1545,11 @@ def _ncu_kernel_summary(
     result = {
         "kernel": rows[0]["Kernel Name"],
         "launches_profiled": len(rows),
-        "duration_ms": summarize(
-            [metric.normalized_value for metric in durations]
-        ),
+        "duration_ms": summarize([metric.normalized_value for metric in durations]),
         "dram_bytes": statistics.median(
             metric.normalized_value for metric in dram_bytes
         ),
-        "l2_bytes": statistics.median(
-            metric.normalized_value for metric in l2_bytes
-        ),
+        "l2_bytes": statistics.median(metric.normalized_value for metric in l2_bytes),
         "unit_normalization_provenance": {
             "duration": [metric.as_dict() for metric in durations],
             "dram": [metric.as_dict() for metric in dram_bytes],
@@ -1436,10 +1564,18 @@ def _ncu_kernel_summary(
             values("sm__warps_active.avg.pct_of_peak_sustained_active")
         ),
         "fp32_thread_instructions": {
-            "fadd": statistics.median(values("smsp__sass_thread_inst_executed_op_fadd_pred_on.sum")),
-            "ffma": statistics.median(values("smsp__sass_thread_inst_executed_op_ffma_pred_on.sum")),
-            "fmul": statistics.median(values("smsp__sass_thread_inst_executed_op_fmul_pred_on.sum")),
-            "all_fp32": statistics.median(values("smsp__sass_thread_inst_executed_op_fp32_pred_on.sum")),
+            "fadd": statistics.median(
+                values("smsp__sass_thread_inst_executed_op_fadd_pred_on.sum")
+            ),
+            "ffma": statistics.median(
+                values("smsp__sass_thread_inst_executed_op_ffma_pred_on.sum")
+            ),
+            "fmul": statistics.median(
+                values("smsp__sass_thread_inst_executed_op_fmul_pred_on.sum")
+            ),
+            "all_fp32": statistics.median(
+                values("smsp__sass_thread_inst_executed_op_fp32_pred_on.sum")
+            ),
         },
         "shared_data_bytes": {
             "load": statistics.median(
@@ -1531,7 +1667,8 @@ def _ncu_micro_summaries(
         launch_details = [
             item
             for item in detail_rows
-            if item.get("ID") == row["ID"] and expected_kernel in item.get("Kernel Name", "")
+            if item.get("ID") == row["ID"]
+            and expected_kernel in item.get("Kernel Name", "")
         ]
         opcode_row = next(
             (
@@ -1624,11 +1761,18 @@ def _sass_proof(
         opcode = str(row["opcode"])
         counts[opcode] = counts.get(opcode, 0) + 1
     checks = {
-        prefix: sum(count for opcode, count in counts.items() if opcode.startswith(prefix)) >= minimum
+        prefix: sum(
+            count for opcode, count in counts.items() if opcode.startswith(prefix)
+        )
+        >= minimum
         for prefix, minimum in expected.items()
     }
     snippets = [
-        {"offset_hex": hex(int(row["offset"])), "opcode": row["opcode"], "text": row["text"]}
+        {
+            "offset_hex": hex(int(row["offset"])),
+            "opcode": row["opcode"],
+            "text": row["text"],
+        }
         for row in instructions
         if any(str(row["opcode"]).startswith(prefix) for prefix in expected)
     ]
@@ -1642,23 +1786,30 @@ def _sass_proof(
 
 
 def _rate(probes: dict[str, Any], name: str, quantile: str = "median") -> float:
-    return float(
-        probes[name]["thermal_controlled_sustained_rate_per_second"][quantile]
-    )
+    return float(probes[name]["thermal_controlled_sustained_rate_per_second"][quantile])
 
 
 def _kernel_model(
-    ncu: dict[str, Any], probes: dict[str, Any], *, stage: str,
-    fp32_ceiling_tflops: float, dram_ceiling_gbs: float,
-    rate_quantile: str, contention_probe: str, barrier_probe: str,
-    chain_mufu: bool, launch_latency_quantile: str,
+    ncu: dict[str, Any],
+    probes: dict[str, Any],
+    *,
+    stage: str,
+    fp32_ceiling_tflops: float,
+    dram_ceiling_gbs: float,
+    rate_quantile: str,
+    contention_probe: str,
+    barrier_probe: str,
+    chain_mufu: bool,
+    launch_latency_quantile: str,
     current_wrapper_duration_ms: float,
 ) -> dict[str, Any]:
     profiled_duration_ms = ncu["duration_ms"]["median"]
     l2_achieved_gbs = ncu["l2_bytes"] / (profiled_duration_ms * 1e-3) / 1e9
     l2_ceiling_gbs = l2_achieved_gbs / (ncu["l2_throughput_pct_of_peak"] / 100.0)
     old_terms = {
-        "fp32": ncu["counted_flops_fadd_plus_fmul_plus_2xffma"] / (fp32_ceiling_tflops * 1e12) * 1e3,
+        "fp32": ncu["counted_flops_fadd_plus_fmul_plus_2xffma"]
+        / (fp32_ceiling_tflops * 1e12)
+        * 1e3,
         "dram": ncu["dram_bytes"] / (dram_ceiling_gbs * 1e9) * 1e3,
         "l2": ncu["l2_bytes"] / (l2_ceiling_gbs * 1e9) * 1e3,
     }
@@ -1865,13 +2016,19 @@ def command_analyze(args: argparse.Namespace) -> int:
     for scenario, settings in scenario_settings.items():
         stage_models = {
             "forward": _kernel_model(
-                fwd_ncu, probes, stage="forward", fp32_ceiling_tflops=fp32_ceiling,
+                fwd_ncu,
+                probes,
+                stage="forward",
+                fp32_ceiling_tflops=fp32_ceiling,
                 dram_ceiling_gbs=dram_ceiling,
                 current_wrapper_duration_ms=raster_timings["forward"]["median"],
                 **settings,
             ),
             "backward": _kernel_model(
-                bwd_ncu, probes, stage="backward", fp32_ceiling_tflops=fp32_ceiling,
+                bwd_ncu,
+                probes,
+                stage="backward",
+                fp32_ceiling_tflops=fp32_ceiling,
                 dram_ceiling_gbs=dram_ceiling,
                 current_wrapper_duration_ms=raster_timings["backward"]["median"],
                 **settings,
@@ -1895,9 +2052,9 @@ def command_analyze(args: argparse.Namespace) -> int:
                 stage_models[stage][model_key]["efficiency_percent"] = (
                     100.0 * target / current[f"{stage}_ms"]
                 )
-                stage_models[stage][model_key]["residual_relative_to_target_percent"] = (
-                    100.0 * (current[f"{stage}_ms"] / target - 1.0)
-                )
+                stage_models[stage][model_key][
+                    "residual_relative_to_target_percent"
+                ] = 100.0 * (current[f"{stage}_ms"] / target - 1.0)
         combined_old = _combine_stage_models(
             stage_models, "optimistic_l2_only_roofline", "lower_bound_ms"
         )
@@ -1927,16 +2084,10 @@ def command_analyze(args: argparse.Namespace) -> int:
             },
         }
 
-    current_q05 = (
-        raster_timings["forward"]["q05"] + raster_timings["backward"]["q05"]
-    )
-    current_q95 = (
-        raster_timings["forward"]["q95"] + raster_timings["backward"]["q95"]
-    )
+    current_q05 = raster_timings["forward"]["q05"] + raster_timings["backward"]["q05"]
+    current_q95 = raster_timings["forward"]["q95"] + raster_timings["backward"]["q95"]
     scenario_resource_targets = [
-        scenario["combined"][
-            "operation_aware_empirical_sustained_resource_target"
-        ][
+        scenario["combined"]["operation_aware_empirical_sustained_resource_target"][
             "target_ms"
         ]
         for scenario in scenarios.values()
@@ -1952,9 +2103,9 @@ def command_analyze(args: argparse.Namespace) -> int:
     central_operation = scenarios["central"]["combined"][
         "operation_aware_empirical_sustained_resource_target"
     ]["target_ms"]
-    central_old = scenarios["central"]["combined"][
-        "optimistic_l2_only_roofline"
-    ]["lower_bound_ms"]
+    central_old = scenarios["central"]["combined"]["optimistic_l2_only_roofline"][
+        "lower_bound_ms"
+    ]
 
     expected_micro = {
         "kc_reduction_ilp9": {"SHFL": 45, "FADD": 45},
@@ -1981,8 +2132,7 @@ def command_analyze(args: argparse.Namespace) -> int:
         "backward_ms": bwd_ncu["duration_ms"]["median"],
     }
     ncu_profiled_current["combined_ms"] = (
-        ncu_profiled_current["forward_ms"]
-        + ncu_profiled_current["backward_ms"]
+        ncu_profiled_current["forward_ms"] + ncu_profiled_current["backward_ms"]
     )
     profile_comparable: dict[str, Any] = {"current": ncu_profiled_current}
     for model_key, value_key in (
@@ -2002,8 +2152,7 @@ def command_analyze(args: argparse.Namespace) -> int:
                 ),
             }
         combined_target = (
-            stage_result["forward"][value_key]
-            + stage_result["backward"][value_key]
+            stage_result["forward"][value_key] + stage_result["backward"][value_key]
         )
         profile_comparable[model_key] = {
             "stages": stage_result,
@@ -2018,9 +2167,17 @@ def command_analyze(args: argparse.Namespace) -> int:
         }
     artifacts = []
     for path in sorted(output_dir.iterdir()):
-        if path.is_file() and path.name != "analysis.json" and not path.name.endswith(".ncu-rep"):
+        if (
+            path.is_file()
+            and path.name != "analysis.json"
+            and not path.name.endswith(".ncu-rep")
+        ):
             artifacts.append(
-                {"path": str(path), "bytes": path.stat().st_size, "sha256": _sha256(path)}
+                {
+                    "path": str(path),
+                    "bytes": path.stat().st_size,
+                    "sha256": _sha256(path),
+                }
             )
     analysis = {
         "schema_version": SCHEMA_VERSION,
@@ -2059,14 +2216,27 @@ def command_analyze(args: argparse.Namespace) -> int:
                 "function": fwd_name,
                 **_sass_proof(
                     fwd_sass,
-                    {"BAR.RED": 1, "BAR.SYNC": 1, "LDS.128": 2, "STS.128": 2, "MUFU.EX2": 1},
+                    {
+                        "BAR.RED": 1,
+                        "BAR.SYNC": 1,
+                        "LDS.128": 2,
+                        "STS.128": 2,
+                        "MUFU.EX2": 1,
+                    },
                 ),
             },
             "backward": {
                 "function": bwd_name,
                 **_sass_proof(
                     bwd_sass,
-                    {"BAR.SYNC": 2, "SHFL": 55, "REDG": 11, "REDUX": 1, "MUFU.EX2": 1, "MUFU.RCP": 1},
+                    {
+                        "BAR.SYNC": 2,
+                        "SHFL": 55,
+                        "REDG": 11,
+                        "REDUX": 1,
+                        "MUFU.EX2": 1,
+                        "MUFU.RCP": 1,
+                    },
                 ),
             },
             "microbenchmarks": micro_proof,
@@ -2080,17 +2250,37 @@ def command_analyze(args: argparse.Namespace) -> int:
                 target_low,
                 target_high,
             ],
-            "current_non_profiled_wrapper_combined_ms_q05_q95": [current_q05, current_q95],
-            "central_operation_aware_efficiency_percent": scenarios["central"]["combined"]["operation_aware_empirical_sustained_resource_target"]["efficiency_percent"],
-            "central_residual_relative_to_resource_target_percent": scenarios["central"]["combined"]["operation_aware_empirical_sustained_resource_target"]["residual_relative_to_target_percent"],
+            "current_non_profiled_wrapper_combined_ms_q05_q95": [
+                current_q05,
+                current_q95,
+            ],
+            "central_operation_aware_efficiency_percent": scenarios["central"][
+                "combined"
+            ]["operation_aware_empirical_sustained_resource_target"][
+                "efficiency_percent"
+            ],
+            "central_residual_relative_to_resource_target_percent": scenarios[
+                "central"
+            ]["combined"]["operation_aware_empirical_sustained_resource_target"][
+                "residual_relative_to_target_percent"
+            ],
         },
         "ceiling_distinctions": {
             "existing_official_optimistic_l2_only_combined_efficiency_percent": 18.48,
-            "fresh_non_profiled_wrapper_optimistic_l2_only": scenarios["central"]["combined"]["optimistic_l2_only_roofline"],
-            "operation_aware_empirical_sustained_resource_target_non_profiled_wrapper": scenarios["central"]["combined"]["operation_aware_empirical_sustained_resource_target"],
+            "fresh_non_profiled_wrapper_optimistic_l2_only": scenarios["central"][
+                "combined"
+            ]["optimistic_l2_only_roofline"],
+            "operation_aware_empirical_sustained_resource_target_non_profiled_wrapper": scenarios[
+                "central"
+            ][
+                "combined"
+            ][
+                "operation_aware_empirical_sustained_resource_target"
+            ],
             "ncu_profile_comparable_not_primary_latency": profile_comparable,
             "possible_algorithm_changing_headroom": {
-                "empirical_resource_target_over_l2_only_bound": central_operation / central_old,
+                "empirical_resource_target_over_l2_only_bound": central_operation
+                / central_old,
                 "interpretation": "Changing traversal/reduction/accumulation may remove operation-aware terms and approach the L2-only physical bound. Reducing L2 traffic or useful work could go further and is deliberately not quantified by this resource target.",
                 "not_an_achievable_direct_ptx_claim": True,
             },
@@ -2140,7 +2330,9 @@ def _parser() -> argparse.ArgumentParser:
     measure.set_defaults(function=command_measure)
 
     profile = subparsers.add_parser("profile-target")
-    profile.add_argument("--target", choices=("forward", "backward", "micro"), required=True)
+    profile.add_argument(
+        "--target", choices=("forward", "backward", "micro"), required=True
+    )
     profile.add_argument("--target-warmup", type=int, default=5)
     profile.add_argument("--target-launches", type=int, default=5)
     profile.set_defaults(function=command_profile_target)

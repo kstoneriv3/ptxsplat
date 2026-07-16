@@ -114,12 +114,8 @@ def _launch_probe(iterations: int, repetitions: int) -> dict[str, Any]:
         "host_enqueue_q3_us_per_kernel": float(np.percentile(host_values, 75.0)),
         "gpu_serialized_q1_us_per_kernel": float(np.percentile(gpu_values, 25.0)),
         "gpu_serialized_q3_us_per_kernel": float(np.percentile(gpu_values, 75.0)),
-        "host_enqueue_samples_us_per_kernel": [
-            float(value) for value in host_values
-        ],
-        "gpu_serialized_samples_us_per_kernel": [
-            float(value) for value in gpu_values
-        ],
+        "host_enqueue_samples_us_per_kernel": [float(value) for value in host_values],
+        "gpu_serialized_samples_us_per_kernel": [float(value) for value in gpu_values],
     }
 
 

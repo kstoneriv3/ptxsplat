@@ -117,9 +117,7 @@ def test_normalize_ncu_byte_per_block_unit() -> None:
     ("unit", "dimension"),
     [("cycles", "time"), ("Kibit", "bytes"), ("Mbyte/s", "bytes")],
 )
-def test_normalize_ncu_rejects_unknown_units_loudly(
-    unit: str, dimension: str
-) -> None:
+def test_normalize_ncu_rejects_unknown_units_loudly(unit: str, dimension: str) -> None:
     with pytest.raises(ValueError, match="unsupported NCU"):
         normalize_ncu_metric("1", unit, dimension)  # type: ignore[arg-type]
 
@@ -134,12 +132,12 @@ def test_parse_ncu_tall_csv_without_units() -> None:
 
 
 def test_parse_instruction_instances_and_opcode_mix() -> None:
-    assert parse_opcode_mix(
-        "100 (SHFL: 55; FADD: 44; REDG: 11)"
-    ) == {"SHFL": 55, "FADD": 44, "REDG": 11}
-    assert parse_pc_instances(
-        "30 (0x1000: 10; 0x1010: 20)"
-    ) == {0x1000: 10, 0x1010: 20}
+    assert parse_opcode_mix("100 (SHFL: 55; FADD: 44; REDG: 11)") == {
+        "SHFL": 55,
+        "FADD": 44,
+        "REDG": 11,
+    }
+    assert parse_pc_instances("30 (0x1000: 10; 0x1010: 20)") == {0x1000: 10, 0x1010: 20}
 
 
 def test_sass_parse_select_and_dynamic_subopcode_mapping() -> None:
@@ -196,9 +194,7 @@ def test_reduction_count_rejects_non_integral_event_count() -> None:
 
 
 def test_independent_resources_use_max_not_sum() -> None:
-    model = independent_resource_bound_ms(
-        {"fp32": 0.1, "l2": 0.4, "barrier": 0.3}
-    )
+    model = independent_resource_bound_ms({"fp32": 0.1, "l2": 0.4, "barrier": 0.3})
     assert model["lower_bound_ms"] == 0.4
     assert model["limiting_resource"] == "l2"
     assert model["equation"] == "max(fp32, l2, barrier)"

@@ -34,23 +34,29 @@ def _inputs(packed: bool, empty: bool = False):
     means = torch.stack(
         (base_means, base_means + torch.tensor([0.25, -0.25], device=DEVICE))
     )
-    conics = torch.tensor(
-        [
-            [0.35, 0.01, 0.4],
-            [0.08, 0.0, 0.1],
-            [0.2, -0.01, 0.15],
-            [0.5, 0.02, 0.45],
-            [0.3, 0.0, 0.3],
-            [0.6, -0.02, 0.55],
-        ],
-        device=DEVICE,
-    ).expand(images, -1, -1).clone()
+    conics = (
+        torch.tensor(
+            [
+                [0.35, 0.01, 0.4],
+                [0.08, 0.0, 0.1],
+                [0.2, -0.01, 0.15],
+                [0.5, 0.02, 0.45],
+                [0.3, 0.0, 0.3],
+                [0.6, -0.02, 0.55],
+            ],
+            device=DEVICE,
+        )
+        .expand(images, -1, -1)
+        .clone()
+    )
     colors = torch.linspace(0.05, 0.95, images * count * 3, device=DEVICE).reshape(
         images, count, 3
     )
-    opacities = torch.tensor(
-        [0.05, 0.2, 0.45, 0.7, 0.999, 0.3], device=DEVICE
-    ).expand(images, -1).clone()
+    opacities = (
+        torch.tensor([0.05, 0.2, 0.45, 0.7, 0.999, 0.3], device=DEVICE)
+        .expand(images, -1)
+        .clone()
+    )
     flatten_ids = torch.empty(0, dtype=torch.int32, device=DEVICE)
     offsets = torch.zeros((images, 2, 2), dtype=torch.int32, device=DEVICE)
     if not empty:
@@ -66,9 +72,7 @@ def _inputs(packed: bool, empty: bool = False):
                 images, 2, 2
             )
         )
-    backgrounds = torch.tensor(
-        [[0.1, 0.2, 0.3], [0.6, 0.4, 0.2]], device=DEVICE
-    )
+    backgrounds = torch.tensor([[0.1, 0.2, 0.3], [0.6, 0.4, 0.2]], device=DEVICE)
     masks = torch.tensor(
         [[[False, True], [True, True]], [[False, True], [True, True]]],
         device=DEVICE,
@@ -113,9 +117,11 @@ def _run(backend: str, packed: bool, background: bool, absgrad: bool, empty: boo
             inputs["backgrounds"].requires_grad_(True)
             differentiable.append("backgrounds")
         render, alpha = rasterize_to_pixels(absgrad=absgrad, **inputs)
-        pixel_mask = inputs["masks"].repeat_interleave(
-            inputs["tile_size"], dim=-2
-        ).repeat_interleave(inputs["tile_size"], dim=-1)
+        pixel_mask = (
+            inputs["masks"]
+            .repeat_interleave(inputs["tile_size"], dim=-2)
+            .repeat_interleave(inputs["tile_size"], dim=-1)
+        )
         pixel_mask = pixel_mask[..., : alpha.shape[-3], : alpha.shape[-2]]
         color_weight = torch.linspace(
             0.1, 0.9, render.numel(), device=DEVICE
@@ -124,9 +130,9 @@ def _run(backend: str, packed: bool, background: bool, absgrad: bool, empty: boo
             -0.2, 0.3, alpha.numel(), device=DEVICE
         ).reshape_as(alpha)
         loss = render.mul(color_weight).sum()
-        loss = loss + alpha[..., 0][pixel_mask].mul(
-            alpha_weight[..., 0][pixel_mask]
-        ).sum()
+        loss = (
+            loss + alpha[..., 0][pixel_mask].mul(alpha_weight[..., 0][pixel_mask]).sum()
+        )
         loss.backward()
         result = {
             "render": render.detach(),
@@ -207,9 +213,7 @@ def test_sm120_rejects_unsupported_tile_size(monkeypatch):
     monkeypatch.setenv("PTXSPLAT_BACKEND", "sm120")
     inputs = _inputs(packed=True)
     inputs["tile_size"] = 8
-    inputs["isect_offsets"] = torch.zeros(
-        (2, 3, 3), dtype=torch.int32, device=DEVICE
-    )
+    inputs["isect_offsets"] = torch.zeros((2, 3, 3), dtype=torch.int32, device=DEVICE)
     inputs["masks"] = torch.ones_like(inputs["isect_offsets"], dtype=torch.bool)
     inputs["flatten_ids"] = torch.empty(0, dtype=torch.int32, device=DEVICE)
     inputs["means2d"].requires_grad_(True)
@@ -222,9 +226,7 @@ def test_auto_falls_back_for_unsupported_tile_size(monkeypatch):
     monkeypatch.setenv("PTXSPLAT_BACKEND", "auto")
     inputs = _inputs(packed=True)
     inputs["tile_size"] = 8
-    inputs["isect_offsets"] = torch.zeros(
-        (2, 3, 3), dtype=torch.int32, device=DEVICE
-    )
+    inputs["isect_offsets"] = torch.zeros((2, 3, 3), dtype=torch.int32, device=DEVICE)
     inputs["masks"] = torch.ones_like(inputs["isect_offsets"], dtype=torch.bool)
     inputs["flatten_ids"] = torch.empty(0, dtype=torch.int32, device=DEVICE)
     inputs["means2d"].requires_grad_(True)

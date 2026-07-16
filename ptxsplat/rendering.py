@@ -475,9 +475,7 @@ def rasterization(
         if packed:
             if colors.dim() == num_batch_dims + 2:
                 # Turn [..., N, D] into [nnz, D]
-                colors = colors.view(B, N, colors.shape[-1])[
-                    batch_ids, gaussian_ids
-                ]
+                colors = colors.view(B, N, colors.shape[-1])[batch_ids, gaussian_ids]
             else:
                 # Turn [..., C, N, D] into [nnz, D]
                 colors = colors.view(B, C, N, colors.shape[-1])[

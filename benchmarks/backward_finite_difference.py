@@ -76,9 +76,7 @@ def _single_off_center_scene(device: torch.device) -> dict[str, Any]:
 
 def _two_gaussian_scene(device: torch.device) -> dict[str, Any]:
     return {
-        "means2d": torch.tensor(
-            [[[1.60, 2.90], [4.25, 1.25]]], device=device
-        ),
+        "means2d": torch.tensor([[[1.60, 2.90], [4.25, 1.25]]], device=device),
         "conics": torch.tensor(
             [[[0.09, 0.018, 0.12], [0.14, -0.012, 0.105]]], device=device
         ),
@@ -235,7 +233,9 @@ def _run_probe(
     }
 
 
-def _fp64_closed_form(inputs: dict[str, Any]) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
+def _fp64_closed_form(
+    inputs: dict[str, Any]
+) -> tuple[torch.Tensor, torch.Tensor, dict[str, float]]:
     means = inputs["means2d"].detach().cpu().double()[0]
     conics = inputs["conics"].detach().cpu().double()[0]
     colors = inputs["colors"].detach().cpu().double()[0]
@@ -284,15 +284,21 @@ def _fp64_closed_form(inputs: dict[str, Any]) -> tuple[torch.Tensor, torch.Tenso
             expected_render[0, y, x] = color
             expected_alpha[0, y, x, 0] = 1.0 - transmittance
 
-    return expected_render, expected_alpha, {
-        "min_sigma": min_sigma,
-        "min_alpha_threshold_margin": min_alpha_margin,
-        "min_alpha_clamp_margin": min_clamp_margin,
-        "min_early_termination_margin": min_termination_margin,
-    }
+    return (
+        expected_render,
+        expected_alpha,
+        {
+            "min_sigma": min_sigma,
+            "min_alpha_threshold_margin": min_alpha_margin,
+            "min_alpha_clamp_margin": min_clamp_margin,
+            "min_early_termination_margin": min_termination_margin,
+        },
+    )
 
 
-def _closed_form_check(backend: str, scene: Scene, device: torch.device) -> dict[str, Any]:
+def _closed_form_check(
+    backend: str, scene: Scene, device: torch.device
+) -> dict[str, Any]:
     previous_backend = _set_backend(backend)
     try:
         inputs = scene.build(device)
@@ -331,19 +337,18 @@ def _closed_form_check(backend: str, scene: Scene, device: torch.device) -> dict
         _restore_backend(previous_backend)
 
 
-def _nonsmooth_classifications(closed_form: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _nonsmooth_classifications(
+    closed_form: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     minima = {
         "min_alpha_threshold_margin": min(
             check["smooth_margins"]["min_alpha_threshold_margin"]
             for check in closed_form
         ),
         "min_alpha_clamp_margin": min(
-            check["smooth_margins"]["min_alpha_clamp_margin"]
-            for check in closed_form
+            check["smooth_margins"]["min_alpha_clamp_margin"] for check in closed_form
         ),
-        "min_sigma": min(
-            check["smooth_margins"]["min_sigma"] for check in closed_form
-        ),
+        "min_sigma": min(check["smooth_margins"]["min_sigma"] for check in closed_form),
         "min_early_termination_margin": min(
             check["smooth_margins"]["min_early_termination_margin"]
             for check in closed_form
@@ -398,8 +403,12 @@ def _error_summaries(probes: list[dict[str, Any]]) -> dict[str, Any]:
             grouping[value] = {
                 "count": len(matching),
                 "failed": sum(not probe["passed"] for probe in matching),
-                "max_absolute_error": max(probe["absolute_error"] for probe in matching),
-                "max_relative_error": max(probe["relative_error"] for probe in matching),
+                "max_absolute_error": max(
+                    probe["absolute_error"] for probe in matching
+                ),
+                "max_relative_error": max(
+                    probe["relative_error"] for probe in matching
+                ),
             }
     return {
         "probe_count": len(probes),
