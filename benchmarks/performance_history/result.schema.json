@@ -1,0 +1,219 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/kstoneriv3/ptxsplat/benchmarks/performance_history/result.schema.json",
+  "title": "ptxsplat paired performance-history result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "record_type",
+    "study_id",
+    "experiment_id",
+    "attempt_index",
+    "timestamp_utc",
+    "status",
+    "description",
+    "candidate",
+    "baseline",
+    "comparison_kind",
+    "publication",
+    "promoted",
+    "environment",
+    "protocol",
+    "datasets",
+    "correctness",
+    "measurements"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "record_type": {"const": "ptxsplat.performance_history.result"},
+    "study_id": {"$ref": "#/$defs/id"},
+    "experiment_id": {"$ref": "#/$defs/id"},
+    "attempt_index": {"type": "integer", "minimum": 0},
+    "timestamp_utc": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?Z$"
+    },
+    "status": {"enum": ["keep", "discard", "crash"]},
+    "description": {"type": "string", "minLength": 1},
+    "candidate": {"$ref": "#/$defs/side"},
+    "baseline": {"$ref": "#/$defs/side"},
+    "comparison_kind": {
+      "enum": ["baseline", "historical", "ablation", "candidate"]
+    },
+    "publication": {"type": "boolean"},
+    "promoted": {"type": "boolean"},
+    "environment": {"$ref": "#/$defs/environment"},
+    "protocol": {"$ref": "#/$defs/protocol"},
+    "datasets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/dataset"}
+    },
+    "correctness": {"$ref": "#/$defs/correctness"},
+    "measurements": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/measurement"}
+    },
+    "ablation": {"$ref": "#/$defs/ablation"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "sha40": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "sha64": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "positiveSamples": {
+      "type": "array",
+      "minItems": 3,
+      "items": {"type": "number", "exclusiveMinimum": 0}
+    },
+    "side": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "label"],
+      "properties": {
+        "commit": {"$ref": "#/$defs/sha40"},
+        "label": {"type": "string", "minLength": 1}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "environment_id",
+        "gpu_name",
+        "gpu_uuid",
+        "container_image",
+        "driver_version",
+        "cuda_version",
+        "pytorch_version",
+        "build_flags",
+        "sm_clock_mhz",
+        "memory_clock_mhz"
+      ],
+      "properties": {
+        "environment_id": {"$ref": "#/$defs/id"},
+        "gpu_name": {"type": "string", "minLength": 1},
+        "gpu_uuid": {"type": "string", "minLength": 1},
+        "container_image": {"type": "string", "minLength": 1},
+        "driver_version": {"type": "string", "minLength": 1},
+        "cuda_version": {"type": "string", "minLength": 1},
+        "pytorch_version": {"type": "string", "minLength": 1},
+        "build_flags": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "sm_clock_mhz": {"type": "number", "exclusiveMinimum": 0},
+        "memory_clock_mhz": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evaluator_commit",
+        "evaluator_sha256",
+        "startup_compile_excluded",
+        "seeds",
+        "pair_order",
+        "warmup_iterations",
+        "measured_iterations",
+        "rounds",
+        "training_steps",
+        "progress_scene_id",
+        "progress_scope"
+      ],
+      "properties": {
+        "evaluator_commit": {"$ref": "#/$defs/sha40"},
+        "evaluator_sha256": {"$ref": "#/$defs/sha64"},
+        "startup_compile_excluded": {"const": true},
+        "seeds": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "integer", "minimum": 0},
+          "uniqueItems": true
+        },
+        "pair_order": {
+          "type": "array",
+          "minItems": 3,
+          "items": {"enum": ["baseline-first", "candidate-first"]}
+        },
+        "warmup_iterations": {"type": "integer", "minimum": 0},
+        "measured_iterations": {"type": "integer", "minimum": 1},
+        "rounds": {"type": "integer", "minimum": 1},
+        "training_steps": {"type": "integer", "minimum": 1},
+        "progress_scene_id": {"$ref": "#/$defs/id"},
+        "progress_scope": {
+          "enum": [
+            "isolated_forward",
+            "isolated_backward",
+            "forward_backward",
+            "training"
+          ]
+        }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scene_id", "dataset", "sha256", "data_factor"],
+      "properties": {
+        "scene_id": {"$ref": "#/$defs/id"},
+        "dataset": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha64"},
+        "data_factor": {"type": "integer", "minimum": 1}
+      }
+    },
+    "correctness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["passed", "gate", "artifact_sha256"],
+      "properties": {
+        "passed": {"type": "boolean"},
+        "gate": {"type": "string", "minLength": 1},
+        "artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha64"}, {"type": "null"}]
+        }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scene_id",
+        "scope",
+        "unit",
+        "baseline_samples",
+        "candidate_samples"
+      ],
+      "properties": {
+        "scene_id": {"$ref": "#/$defs/id"},
+        "scope": {
+          "enum": [
+            "isolated_forward",
+            "isolated_backward",
+            "forward_backward",
+            "training"
+          ]
+        },
+        "unit": {"enum": ["ms", "s"]},
+        "baseline_samples": {"$ref": "#/$defs/positiveSamples"},
+        "candidate_samples": {"$ref": "#/$defs/positiveSamples"}
+      }
+    },
+    "ablation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group_id", "order", "component", "method"],
+      "properties": {
+        "group_id": {"$ref": "#/$defs/id"},
+        "order": {"type": "integer", "minimum": 0},
+        "component": {"type": "string", "minLength": 1},
+        "method": {"enum": ["historical_checkpoint", "tip_removal"]}
+      }
+    }
+  }
+}

@@ -93,6 +93,9 @@ resolution disabled after installing the overload.
 - [`docs/CORRECTNESS.md`](docs/CORRECTNESS.md): diagnostic scenes and parity
   policy.
 - [`docs/BENCHMARKING.md`](docs/BENCHMARKING.md): benchmark and roofline method.
+- [`docs/PERFORMANCE_STUDY.md`](docs/PERFORMANCE_STUDY.md): methodology and
+  backlog for the deferred multi-scene performance-history study; no results
+  are claimed there.
 
 ## Attribution
 
