@@ -268,6 +268,42 @@ Placeholder charts and single-scene headline claims are never embedded.
 
 ## First dynamic batch to queue later
 
+### Deferred harness commands
+
+Freeze a human-reviewed JSON spec without importing CUDA, then validate and
+inspect its deterministic run plan:
+
+```bash
+python3 -m benchmarks.performance_study init \
+  --spec benchmark-results/performance-study/study-spec.json \
+  --output benchmark-results/performance-study/study.json
+python3 -m benchmarks.performance_study validate \
+  --manifest benchmark-results/performance-study/study.json
+python3 -m benchmarks.performance_study plan \
+  --manifest benchmark-results/performance-study/study.json
+```
+
+The safe preflight below only reads a saved probe fixture. Omit
+`--probe-fixture` later, after the viewers are stopped, to query live host
+state. A live run additionally requires
+`PTXSPLAT_PERFORMANCE_EXCLUSIVE_GPU=YES` and is refused when any provenance or
+exclusivity gate fails.
+
+```bash
+python3 -m benchmarks.performance_study preflight \
+  --manifest benchmark-results/performance-study/study.json \
+  --probe-fixture benchmark-results/performance-study/probe.json
+python3 -m benchmarks.performance_study import \
+  --manifest benchmark-results/performance-study/study.json \
+  --raw benchmark-results/performance-study/runs/RUN_ID/attempt-000/raw.json \
+  --results benchmark-results/performance-history/results.jsonl
+```
+
+`plan` prints blocked adapters instead of commands until a reviewed executor
+provides resettable startup/JIT exclusion, dispatch proof, telemetry, and a
+direct forward+backward interval. Existing terminal events are skipped; use
+`--retry-status rejected` or `--retry-status crash` to append a new attempt.
+
 After viewers are stopped and the collector is committed, queue one calibration
 batch before historical worktrees:
 
